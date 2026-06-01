@@ -46,16 +46,8 @@ public static class CIBuildAddressables
             AssetBundleBuilderGUI.assetBundleGroups.Add(assetBundleGroup);
         }
 
-        try
-        {
-            //AssetBundleBuilderGUI.BuildSelected();
-            EditorApplication.delayCall += BuildSelected;
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[CI] Build failed: {ex}");
-            EditorApplication.Exit(1);
-        }
+        //AssetBundleBuilderGUI.BuildSelected();
+        BuildSelected();
     }
 
     public static void SetAndroidQualityAndPlatform()
@@ -105,35 +97,41 @@ public static class CIBuildAddressables
 
     public static void BuildSelected()
     {
-        EditorApplication.delayCall -= BuildSelected;
-
-        // Open a new scene
-        UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Single);
-
-        EditorUtility.UnloadUnusedAssetsImmediate(); // https://issuetracker.unity3d.com/issues/addressables-very-slow-build-when-editor-heap-memory-is-full
-        GC.Collect();
-
-        //AssetBundleBuilderGUI.CloseAddressablesGroupsWindow(); // https://forum.unity.com/threads/buildplayercontent-calculate-asset-dependency-data-takes-forever.1015951/
-        var window = EditorWindow.GetWindow(typeof(EditorWindow), false, "Addressables Groups");
-        if (window.titleContent.text == "Addressables Groups") window.Close();
-
-        foreach (AssetBundleGroup assetBundleGroup in AssetBundleBuilderGUI.assetBundleGroups)
+        try
         {
-            if (assetBundleGroup.selected)
+            // Open a new scene
+            UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Single);
+
+            EditorUtility.UnloadUnusedAssetsImmediate(); // https://issuetracker.unity3d.com/issues/addressables-very-slow-build-when-editor-heap-memory-is-full
+            GC.Collect();
+
+            //AssetBundleBuilderGUI.CloseAddressablesGroupsWindow(); // https://forum.unity.com/threads/buildplayercontent-calculate-asset-dependency-data-takes-forever.1015951/
+            var window = EditorWindow.GetWindow(typeof(EditorWindow), false, "Addressables Groups");
+            if (window.titleContent.text == "Addressables Groups") window.Close();
+
+            foreach (AssetBundleGroup assetBundleGroup in AssetBundleBuilderGUI.assetBundleGroups)
             {
-                assetBundleGroup.OnValidate();
-
-                AssetBundleBuilder.Build(assetBundleGroup, AssetBundleBuilderGUI.clearCache);
-
-                if (assetBundleGroup.exportAfterBuild)
+                if (assetBundleGroup.selected)
                 {
-                    AssetBundleBuilderGUI.Export(assetBundleGroup);
+                    assetBundleGroup.OnValidate();
+
+                    AssetBundleBuilder.Build(assetBundleGroup, AssetBundleBuilderGUI.clearCache);
+
+                    if (assetBundleGroup.exportAfterBuild)
+                    {
+                        AssetBundleBuilderGUI.Export(assetBundleGroup);
+                    }
                 }
             }
-        }
 
-        // The end
-        Debug.Log("[CI] Build completed successfully.");
-        EditorApplication.Exit(0);
+            // The end
+            Debug.Log("[CI] Build completed successfully.");
+            EditorApplication.Exit(0);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[CI] Build failed: {ex}");
+            EditorApplication.Exit(1);
+        }
     }
 }
