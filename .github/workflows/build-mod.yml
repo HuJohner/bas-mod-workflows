@@ -1,0 +1,120 @@
+name: Build Mod Addressables (Reusable)
+
+on:
+  workflow_call:
+    secrets:
+      UNITY_LICENSE:
+        required: true
+      UNITY_EMAIL:
+        required: true
+      UNITY_PASSWORD:
+        required: true
+
+env:
+  BASSDK_PATH: BasSDK
+  UNITY_VERSION: '2021.3.38f1'
+
+jobs:
+  build:
+    name: Build (${{ matrix.target.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: Windows
+            method: CIBuildAddressables.BuildWindows
+            artifact: mod-windows
+          - name: Android
+            method: CIBuildAddressables.BuildAndroid
+            artifact: mod-android
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Check out the shared workflow repo so we can access scripts/
+      # -----------------------------------------------------------------------
+      - name: Checkout workflow repo (for CI scripts)
+        uses: actions/checkout@v4
+        with:
+          repository: HuJohner/bas-mod-workflows
+          path: bas-mod-workflows
+
+      # -----------------------------------------------------------------------
+      # 2. Check out the calling mod repo
+      # -----------------------------------------------------------------------
+      - name: Checkout mod repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref }}
+          path: mod
+
+      # -----------------------------------------------------------------------
+      # 3. Clone BasSDK from Azure DevOps
+      # -----------------------------------------------------------------------
+      - name: Clone BasSDK
+        run: |
+          git clone --depth 1 \
+            https://dev.azure.com/Warpfrog/BasSDK/_git/BasSDK \
+            ${{ env.BASSDK_PATH }}
+
+      # -----------------------------------------------------------------------
+      # 4. Link mod assets + inject CI script into BasSDK
+      # -----------------------------------------------------------------------
+      - name: Set up project structure
+        run: |
+          MOD_NAME="${{ github.event.repository.name }}"
+          PERSONAL_DIR="${{ env.BASSDK_PATH }}/Assets/Personal"
+          EDITOR_DIR="${{ env.BASSDK_PATH }}/Assets/Editor"
+
+          # Link mod's Assets folder into BasSDK/Assets/Personal/<mod-name>
+          mkdir -p "$PERSONAL_DIR"
+          ln -s "$(pwd)/mod/Assets" "$PERSONAL_DIR/$MOD_NAME"
+          echo "Linked mod assets -> $PERSONAL_DIR/$MOD_NAME"
+
+          # Inject the CI build script from the shared workflow repo
+          mkdir -p "$EDITOR_DIR"
+          cp bas-mod-workflows/scripts/CIBuildAddressables.cs "$EDITOR_DIR/CIBuildAddressables.cs"
+          echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
+
+      # -----------------------------------------------------------------------
+      # 5. Cache Unity Library folder
+      # -----------------------------------------------------------------------
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BASSDK_PATH }}/Library
+          key: Library-${{ matrix.target.name }}-${{ hashFiles('mod/Assets/**') }}
+          restore-keys: |
+            Library-${{ matrix.target.name }}-
+            Library-
+
+      # -----------------------------------------------------------------------
+      # 6. Build via GameCI
+      # -----------------------------------------------------------------------
+      - name: Build addressables (${{ matrix.target.name }})
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: ${{ env.BASSDK_PATH }}
+          buildMethod: ${{ matrix.target.method }}
+          buildTarget: ${{ matrix.target.name == 'Android' && 'Android' || 'StandaloneWindows64' }}
+          allowDirtyBuild: true
+
+      # -----------------------------------------------------------------------
+      # 7. Upload build output as artifacts
+      #    Update the path glob if BasSDK writes bundles elsewhere.
+      # -----------------------------------------------------------------------
+      - name: Upload artifacts (${{ matrix.target.name }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target.artifact }}
+          path: |
+            ${{ env.BASSDK_PATH }}/ServerData/**
+            ${{ env.BASSDK_PATH }}/Assets/StreamingAssets/**
+          if-no-files-found: warn
+          retention-days: 30

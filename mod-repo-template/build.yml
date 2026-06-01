@@ -1,0 +1,9 @@
+name: Build Mod
+ 
+on:
+  workflow_dispatch:
+ 
+jobs:
+  build:
+    uses: HuJohner/bas-mod-workflows/.github/workflows/build-mod.yml@main
+    secrets: inherit
