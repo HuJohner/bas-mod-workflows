@@ -1,7 +1,9 @@
-using UnityEditor;
-using UnityEngine;
 using System.Collections.Generic;
 using ThunderRoad;
+using ThunderRoad.AssetSorcery;
+using UnityEditor;
+using UnityEngine;
+using QualityLevel = ThunderRoad.QualityLevel;
 
 /// <summary>
 /// CI entry points for building addressable asset bundles in batch mode.
@@ -15,21 +17,19 @@ public static class CIBuildAddressables
     public static void BuildWindows()
     {
         Debug.Log("[CI] Starting Windows addressable build...");
-        SDKTools.SetWindowsQualityAndPlatform();
+        SetWindowsQualityAndPlatform();
         RunBuild();
     }
 
     public static void BuildAndroid()
     {
         Debug.Log("[CI] Starting Android addressable build...");
-        SDKTools.SetAndroidQualityAndPlatform();
+        SetAndroidQualityAndPlatform();
         RunBuild();
     }
 
     private static void RunBuild()
     {
-        AssetDatabase.Refresh();
-
         AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
         AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
         AssetBundleBuilderGUI.runGameAfterBuild = EditorPrefs.GetBool("TRAB.RunGameAfterBuild");
@@ -56,5 +56,50 @@ public static class CIBuildAddressables
             Debug.LogError($"[CI] Build failed: {ex}");
             EditorApplication.Exit(1);
         }
+    }
+
+    public static void SetAndroidQualityAndPlatform()
+    {
+        // check if the android build support is installed
+        if (!UnityEditor.BuildPipeline.IsBuildTargetSupported(UnityEditor.BuildTargetGroup.Android, UnityEditor.BuildTarget.Android))
+        {
+            Debug.LogWarning($"Android Build Support is not installed. Please install it via the Unity Hub.");
+            return;
+        }
+        //set the quality to android
+        Debug.Log($"Setting quality to {QualityLevel.Android}");
+        QualitySettings.SetQualityLevel((int)QualityLevel.Android);
+        Common.GetQualityLevel(true); // Force cache platform 
+        AssetSorceryPlatform.AssetSorceryShaderSetPlatform(AssetSorceryPlatformRuntime.AssetSorceryGetBuildPlatform(true));
+        //switch the build platform to android
+        if (UnityEditor.EditorUserBuildSettings.activeBuildTarget == UnityEditor.BuildTarget.Android)
+        {
+            Debug.Log("Platform is already set to Android.");
+        }
+        else
+        {
+            UnityEditor.EditorUserBuildSettings.SwitchActiveBuildTarget(UnityEditor.BuildTargetGroup.Android, UnityEditor.BuildTarget.Android);
+        }
+        Debug.Log("Set quality to Android and switched platform to Android.");
+    }
+
+    public static void SetWindowsQualityAndPlatform()
+    {
+        //set the quality to android
+        Debug.Log($"Setting platform to {QualityLevel.Windows}");
+        QualitySettings.SetQualityLevel((int)QualityLevel.Windows);
+        Common.GetQualityLevel(true); // Force cache platform 
+        AssetSorceryPlatform.AssetSorceryShaderSetPlatform(AssetSorceryPlatformRuntime.AssetSorceryGetBuildPlatform(true));
+        //switch the build platform to Windows
+        if (UnityEditor.EditorUserBuildSettings.activeBuildTarget == UnityEditor.BuildTarget.StandaloneWindows64)
+        {
+            Debug.Log("Platform is already set to Windows.");
+        }
+        else
+        {
+            UnityEditor.EditorUserBuildSettings.SwitchActiveBuildTarget(UnityEditor.BuildTargetGroup.Standalone, UnityEditor.BuildTarget.StandaloneWindows64);
+        }
+        Debug.Log("Set quality to Standalone and switched platform to Standalone.");
+
     }
 }
