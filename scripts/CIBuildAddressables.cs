@@ -12,8 +12,6 @@ using ThunderRoad;
 /// </summary>
 public static class CIBuildAddressables
 {
-    private const string PersonalAssetsRoot = "Assets/Personal";
-
     public static void BuildWindows()
     {
         Debug.Log("[CI] Starting Windows addressable build...");
@@ -32,44 +30,23 @@ public static class CIBuildAddressables
     {
         AssetDatabase.Refresh();
 
-        string[] guids = AssetDatabase.FindAssets("t:AssetBundleGroup");
-        if (guids.Length == 0)
+        AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
+        AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
+        AssetBundleBuilderGUI.runGameAfterBuild = EditorPrefs.GetBool("TRAB.RunGameAfterBuild");
+        AssetBundleBuilderGUI.cleanDestination = EditorPrefs.GetBool("TRAB.CleanDestination");
+        AssetBundleBuilderGUI.runGameArguments = EditorPrefs.GetString("TRAB.RunGameArguments");
+
+        AssetBundleBuilderGUI.assetBundleGroups = new List<AssetBundleGroup>();
+        foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
         {
-            Debug.LogError("[CI] No AssetBundleGroup assets found.");
-            EditorApplication.Exit(1);
-            return;
+            assetBundleGroup.selected = assetBundleGroup.isMod && assetBundleGroup.folderName != "Proto";
+            AssetBundleBuilderGUI.assetBundleGroups.Add(assetBundleGroup);
         }
-
-        var personalGroups = new List<AssetBundleGroup>();
-        foreach (string guid in guids)
-        {
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            if (!path.StartsWith(PersonalAssetsRoot))
-            {
-                Debug.Log($"[CI] Skipping (not in Personal/): {path}");
-                continue;
-            }
-
-            var group = AssetDatabase.LoadAssetAtPath<AssetBundleGroup>(path);
-            if (group == null) continue;
-
-            group.selected = true;
-            personalGroups.Add(group);
-            Debug.Log($"[CI] Selected: {group.name}");
-        }
-
-        if (personalGroups.Count == 0)
-        {
-            Debug.LogError($"[CI] No groups found under '{PersonalAssetsRoot}'.");
-            EditorApplication.Exit(1);
-            return;
-        }
-
-        AssetBundleBuilderGUI.assetBundleGroups = personalGroups;
 
         try
         {
-            AssetBundleBuilderGUI.BuildSelected();
+            //AssetBundleBuilderGUI.BuildSelected();
+            typeof(AssetBundleBuilderGUI).GetMethod("BuildSelected", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static).Invoke(null, null);
             Debug.Log("[CI] Build completed successfully.");
             EditorApplication.Exit(0);
         }
