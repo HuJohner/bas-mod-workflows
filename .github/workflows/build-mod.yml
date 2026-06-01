@@ -88,6 +88,20 @@ jobs:
           restore-keys: |
             Library-${{ matrix.target.name }}-
             Library-
+            
+      # -----------------------------------------------------------------------
+      # Free up disk space (very important for Unity builds)
+      # -----------------------------------------------------------------------
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@v1.3
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       # -----------------------------------------------------------------------
       # 6. Build via GameCI
@@ -102,7 +116,7 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           projectPath: ${{ env.BASSDK_PATH }}
           buildMethod: ${{ matrix.target.method }}
-          buildTarget: ${{ matrix.target.name == 'Android' && 'Android' || 'StandaloneWindows64' }}
+          targetPlatform: ${{ matrix.target.name == 'Android' && 'Android' || 'StandaloneWindows64' }}
           allowDirtyBuild: true
 
       # -----------------------------------------------------------------------
