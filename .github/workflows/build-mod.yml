@@ -120,6 +120,27 @@ jobs:
           allowDirtyBuild: true
 
       # -----------------------------------------------------------------------
+      # DEBUG: Show exactly where the Addressables were built
+      # -----------------------------------------------------------------------
+      - name: Debug - Find Addressable Assets
+        run: |
+          echo "=== Current working directory ==="
+          pwd
+          
+          echo "=== Looking for BuildStaging ==="
+          find BasSDK -type d -name "BuildStaging" 2>/dev/null || echo "No BuildStaging folder"
+          
+          echo "=== Full AddressableAssets structure ==="
+          find BasSDK/BuildStaging/AddressableAssets -type d 2>/dev/null || echo "AddressableAssets folder not found"
+          
+          echo "=== Looking for .bundle files ==="
+          find BasSDK -name "*.bundle" | head -30
+          
+          echo "=== Looking for catalog files ==="
+          find BasSDK -name "catalog*.json" | head -10
+        shell: bash
+
+      # -----------------------------------------------------------------------
       # 7. Upload build output as artifacts
       #    Update the path glob if BasSDK writes bundles elsewhere.
       # -----------------------------------------------------------------------
