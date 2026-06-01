@@ -114,7 +114,6 @@ jobs:
         with:
           name: ${{ matrix.target.artifact }}
           path: |
-            ${{ env.BASSDK_PATH }}/ServerData/**
-            ${{ env.BASSDK_PATH }}/Assets/StreamingAssets/**
+            ${{ env.BASSDK_PATH }}/BuildStaging/AddressableAssets/${{ matrix.target.name == 'Android' && 'Android' || 'Windows' }}/**
           if-no-files-found: warn
           retention-days: 30

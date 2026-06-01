@@ -40,6 +40,7 @@ public static class CIBuildAddressables
         foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
         {
             assetBundleGroup.selected = assetBundleGroup.isMod && assetBundleGroup.folderName != "Proto";
+            assetBundleGroup.exportAfterBuild = false;
             AssetBundleBuilderGUI.assetBundleGroups.Add(assetBundleGroup);
         }
 
