@@ -3,12 +3,10 @@ name: Build Mod Addressables (Reusable)
 on:
   workflow_call:
     secrets:
-      UNITY_EMAIL:
+      UNITY_USERNAME:
         required: true
       UNITY_PASSWORD:
         required: true
-      UNITY_SERIAL:
-        required: false  # Only needed for Pro licenses
 
 env:
   BASSDK_PATH: BasSDK
@@ -25,12 +23,10 @@ jobs:
           - name: Windows
             method: CIBuildAddressables.BuildWindows
             build_target: StandaloneWindows64
-            unity_modules: ''          # Base editor is enough for Windows addressables
             artifact: mod-windows
           - name: Android
             method: CIBuildAddressables.BuildAndroid
             build_target: Android
-            unity_modules: 'android'   # Android Build Support module
             artifact: mod-android
 
     steps:
@@ -94,16 +90,27 @@ jobs:
           swap-storage: true
 
       # -----------------------------------------------------------------------
-      # 6. Install Unity via Unity Hub (no Docker, no IL2CPP issues)
+      # 6. Install Unity (no Docker — installs directly via Unity Hub)
       # -----------------------------------------------------------------------
       - name: Install Unity ${{ env.UNITY_VERSION }}
-        uses: kuler-space/unity-install@v0
+        uses: RageAgainstThePixel/unity-setup@v2
         with:
+          version-file: 'none'
           unity-version: ${{ env.UNITY_VERSION }}
-          unity-modules: ${{ matrix.target.unity_modules }}
+          build-targets: ${{ matrix.target.build_target }}
 
       # -----------------------------------------------------------------------
-      # 7. Cache Unity Library folder
+      # 7. Activate Unity Personal license
+      # -----------------------------------------------------------------------
+      - name: Activate Unity license
+        uses: RageAgainstThePixel/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+
+      # -----------------------------------------------------------------------
+      # 8. Cache Unity Library folder
       # -----------------------------------------------------------------------
       - name: Cache Unity Library
         uses: actions/cache@v4
@@ -115,49 +122,19 @@ jobs:
             Library-
 
       # -----------------------------------------------------------------------
-      # 8. Activate Unity license (Personal)
-      # -----------------------------------------------------------------------
-      - name: Activate Unity license
-        run: |
-          UNITY_PATH=$(find /opt/unity/editors -name "Unity" -type f | head -1)
-          echo "Unity path: $UNITY_PATH"
-          "$UNITY_PATH" \
-            -batchmode \
-            -quit \
-            -logFile /dev/stdout \
-            -username "${{ secrets.UNITY_EMAIL }}" \
-            -password "${{ secrets.UNITY_PASSWORD }}" \
-            -activateLicense
-
-      # -----------------------------------------------------------------------
       # 9. Build addressables
       # -----------------------------------------------------------------------
       - name: Build addressables (${{ matrix.target.name }})
-        run: |
-          UNITY_PATH=$(find /opt/unity/editors -name "Unity" -type f | head -1)
-          "$UNITY_PATH" \
-            -batchmode \
-            -quit \
-            -logFile /dev/stdout \
-            -projectPath "$(pwd)/${{ env.BASSDK_PATH }}" \
-            -buildTarget ${{ matrix.target.build_target }} \
-            -executeMethod ${{ matrix.target.method }}
+        uses: RageAgainstThePixel/unity-action@v2
+        with:
+          editor-path: ${{ env.UNITY_EDITOR_PATH }}
+          project-path: ${{ env.BASSDK_PATH }}
+          build-target: ${{ matrix.target.build_target }}
+          log-name: ${{ matrix.target.name }}-addressables
+          args: '-batchmode -quit -executeMethod ${{ matrix.target.method }}'
 
       # -----------------------------------------------------------------------
-      # 10. Return Unity license
-      # -----------------------------------------------------------------------
-      - name: Return Unity license
-        if: always()
-        run: |
-          UNITY_PATH=$(find /opt/unity/editors -name "Unity" -type f | head -1)
-          "$UNITY_PATH" \
-            -batchmode \
-            -quit \
-            -logFile /dev/stdout \
-            -returnLicense || true  # Don't fail the job if return fails
-
-      # -----------------------------------------------------------------------
-      # 11. Upload build output as artifacts
+      # 10. Upload build output as artifacts
       # -----------------------------------------------------------------------
       - name: Upload artifacts (${{ matrix.target.name }})
         uses: actions/upload-artifact@v4
