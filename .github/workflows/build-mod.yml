@@ -3,12 +3,12 @@ name: Build Mod Addressables (Reusable)
 on:
   workflow_call:
     secrets:
-      UNITY_LICENSE:
-        required: true
       UNITY_EMAIL:
         required: true
       UNITY_PASSWORD:
         required: true
+      UNITY_SERIAL:
+        required: false  # Only needed for Pro licenses
 
 env:
   BASSDK_PATH: BasSDK
@@ -25,10 +25,12 @@ jobs:
           - name: Windows
             method: CIBuildAddressables.BuildWindows
             build_target: StandaloneWindows64
+            unity_modules: ''          # Base editor is enough for Windows addressables
             artifact: mod-windows
           - name: Android
             method: CIBuildAddressables.BuildAndroid
             build_target: Android
+            unity_modules: 'android'   # Android Build Support module
             artifact: mod-android
 
     steps:
@@ -78,21 +80,9 @@ jobs:
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
 
       # -----------------------------------------------------------------------
-      # 5. Cache Unity Library folder
+      # 5. Free up disk space (Unity + BasSDK needs several GB)
       # -----------------------------------------------------------------------
-      - name: Cache Unity Library
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.BASSDK_PATH }}/Library
-          key: Library-${{ matrix.target.name }}-${{ hashFiles('mod/Assets/**') }}
-          restore-keys: |
-            Library-${{ matrix.target.name }}-
-            Library-
-            
-      # -----------------------------------------------------------------------
-      # Free up disk space (very important for Unity builds)
-      # -----------------------------------------------------------------------
-      - name: Free Disk Space
+      - name: Free disk space
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: true
@@ -104,23 +94,48 @@ jobs:
           swap-storage: true
 
       # -----------------------------------------------------------------------
-      # 6. Activate Unity license
+      # 6. Install Unity via Unity Hub (no Docker, no IL2CPP issues)
       # -----------------------------------------------------------------------
-      - name: Activate Unity
-        uses: game-ci/unity-activate@v2
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      - name: Install Unity ${{ env.UNITY_VERSION }}
+        uses: kuler-space/unity-install@v0
         with:
-          unityVersion: ${{ env.UNITY_VERSION }}
+          unity-version: ${{ env.UNITY_VERSION }}
+          unity-modules: ${{ matrix.target.unity_modules }}
 
       # -----------------------------------------------------------------------
-      # 7. Run Unity editor script directly against the BasSDK project
+      # 7. Cache Unity Library folder
+      # -----------------------------------------------------------------------
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BASSDK_PATH }}/Library
+          key: Library-${{ matrix.target.name }}-${{ hashFiles('mod/Assets/**') }}
+          restore-keys: |
+            Library-${{ matrix.target.name }}-
+            Library-
+
+      # -----------------------------------------------------------------------
+      # 8. Activate Unity license (Personal)
+      # -----------------------------------------------------------------------
+      - name: Activate Unity license
+        run: |
+          UNITY_PATH=$(find /opt/unity/editors -name "Unity" -type f | head -1)
+          echo "Unity path: $UNITY_PATH"
+          "$UNITY_PATH" \
+            -batchmode \
+            -quit \
+            -logFile /dev/stdout \
+            -username "${{ secrets.UNITY_EMAIL }}" \
+            -password "${{ secrets.UNITY_PASSWORD }}" \
+            -activateLicense
+
+      # -----------------------------------------------------------------------
+      # 9. Build addressables
       # -----------------------------------------------------------------------
       - name: Build addressables (${{ matrix.target.name }})
         run: |
-          /opt/unity/Editor/Unity \
+          UNITY_PATH=$(find /opt/unity/editors -name "Unity" -type f | head -1)
+          "$UNITY_PATH" \
             -batchmode \
             -quit \
             -logFile /dev/stdout \
@@ -129,36 +144,20 @@ jobs:
             -executeMethod ${{ matrix.target.method }}
 
       # -----------------------------------------------------------------------
-      # 8. Return Unity license
+      # 10. Return Unity license
       # -----------------------------------------------------------------------
       - name: Return Unity license
-        uses: game-ci/unity-return-license@v2
         if: always()
-
-      # -----------------------------------------------------------------------
-      # DEBUG: Show exactly where the Addressables were built
-      # -----------------------------------------------------------------------
-      - name: Debug - Find Addressable Assets
         run: |
-          echo "=== Current working directory ==="
-          pwd
-          
-          echo "=== Looking for BuildStaging ==="
-          find BasSDK -type d -name "BuildStaging" 2>/dev/null || echo "No BuildStaging folder"
-          
-          echo "=== Full AddressableAssets structure ==="
-          find BasSDK/BuildStaging/AddressableAssets -type d 2>/dev/null || echo "AddressableAssets folder not found"
-          
-          echo "=== Looking for .bundle files ==="
-          find BasSDK -name "*.bundle" | head -30
-          
-          echo "=== Looking for catalog files ==="
-          find BasSDK -name "catalog*.json" | head -10
-        shell: bash
+          UNITY_PATH=$(find /opt/unity/editors -name "Unity" -type f | head -1)
+          "$UNITY_PATH" \
+            -batchmode \
+            -quit \
+            -logFile /dev/stdout \
+            -returnLicense || true  # Don't fail the job if return fails
 
       # -----------------------------------------------------------------------
-      # 9. Upload build output as artifacts
-      #    Update the path glob if BasSDK writes bundles elsewhere.
+      # 11. Upload build output as artifacts
       # -----------------------------------------------------------------------
       - name: Upload artifacts (${{ matrix.target.name }})
         uses: actions/upload-artifact@v4
