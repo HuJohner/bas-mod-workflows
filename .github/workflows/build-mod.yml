@@ -24,9 +24,11 @@ jobs:
         target:
           - name: Windows
             method: CIBuildAddressables.BuildWindows
+            build_target: StandaloneWindows64
             artifact: mod-windows
           - name: Android
             method: CIBuildAddressables.BuildAndroid
+            build_target: Android
             artifact: mod-android
 
     steps:
@@ -67,12 +69,10 @@ jobs:
           PERSONAL_DIR="${{ env.BASSDK_PATH }}/Assets/Personal"
           EDITOR_DIR="${{ env.BASSDK_PATH }}/Assets/Editor"
 
-          # Link mod's Assets folder into BasSDK/Assets/Personal/<mod-name>
           mkdir -p "$PERSONAL_DIR"
           ln -s "$(pwd)/mod/Assets" "$PERSONAL_DIR/$MOD_NAME"
           echo "Linked mod assets -> $PERSONAL_DIR/$MOD_NAME"
 
-          # Inject the CI build script from the shared workflow repo
           mkdir -p "$EDITOR_DIR"
           cp bas-mod-workflows/scripts/CIBuildAddressables.cs "$EDITOR_DIR/CIBuildAddressables.cs"
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
@@ -104,20 +104,36 @@ jobs:
           swap-storage: true
 
       # -----------------------------------------------------------------------
-      # 6. Build via GameCI
+      # 6. Activate Unity license
       # -----------------------------------------------------------------------
-      - name: Build addressables (${{ matrix.target.name }})
-        uses: game-ci/unity-builder@v4
+      - name: Activate Unity
+        uses: game-ci/unity-activate@v2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: ${{ env.UNITY_VERSION }}
-          projectPath: ${{ env.BASSDK_PATH }}
-          buildMethod: ${{ matrix.target.method }}
-          targetPlatform: ${{ matrix.target.name == 'Android' && 'Android' || 'StandaloneWindows64' }}
-          allowDirtyBuild: true
+
+      # -----------------------------------------------------------------------
+      # 7. Run Unity editor script directly against the BasSDK project
+      # -----------------------------------------------------------------------
+      - name: Build addressables (${{ matrix.target.name }})
+        run: |
+          /opt/unity/Editor/Unity \
+            -batchmode \
+            -quit \
+            -logFile /dev/stdout \
+            -projectPath "$(pwd)/${{ env.BASSDK_PATH }}" \
+            -buildTarget ${{ matrix.target.build_target }} \
+            -executeMethod ${{ matrix.target.method }}
+
+      # -----------------------------------------------------------------------
+      # 8. Return Unity license
+      # -----------------------------------------------------------------------
+      - name: Return Unity license
+        uses: game-ci/unity-return-license@v2
+        if: always()
 
       # -----------------------------------------------------------------------
       # DEBUG: Show exactly where the Addressables were built
@@ -141,7 +157,7 @@ jobs:
         shell: bash
 
       # -----------------------------------------------------------------------
-      # 7. Upload build output as artifacts
+      # 9. Upload build output as artifacts
       #    Update the path glob if BasSDK writes bundles elsewhere.
       # -----------------------------------------------------------------------
       - name: Upload artifacts (${{ matrix.target.name }})
