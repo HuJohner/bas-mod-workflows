@@ -50,16 +50,52 @@ jobs:
           path: mod
 
       # -----------------------------------------------------------------------
-      # 3. Clone BasSDK from Azure DevOps
+      # 3. Free up disk space before any large downloads
       # -----------------------------------------------------------------------
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false   # Keep tool cache — unity-setup uses it
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false  # Keep swap — helps with memory-starved imports
+
+      # -----------------------------------------------------------------------
+      # 4. Restore cached BasSDK clone (avoids ~2 min clone + full reimport)
+      # -----------------------------------------------------------------------
+      - name: Cache BasSDK
+        id: cache-bassdk
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BASSDK_PATH }}
+          key: BasSDK-${{ env.UNITY_VERSION }}-${{ matrix.target.name }}
+          # No restore-keys — BasSDK cache must be exact version match
+
       - name: Clone BasSDK
+        if: steps.cache-bassdk.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 \
             https://dev.azure.com/Warpfrog/BasSDK/_git/BasSDK \
             ${{ env.BASSDK_PATH }}
 
       # -----------------------------------------------------------------------
-      # 4. Link mod assets + inject CI script into BasSDK
+      # 5. Restore cached Unity Library (avoids full reimport on cache hit)
+      #    Must happen BEFORE Unity starts, so it doesn't reimport everything
+      # -----------------------------------------------------------------------
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BASSDK_PATH }}/Library
+          key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
+          restore-keys: |
+            Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
+            Library-${{ matrix.target.name }}-
+
+      # -----------------------------------------------------------------------
+      # 6. Link mod assets + inject CI script into BasSDK
       # -----------------------------------------------------------------------
       - name: Set up project structure
         run: |
@@ -68,6 +104,8 @@ jobs:
           EDITOR_DIR="${{ env.BASSDK_PATH }}/Assets/Editor"
 
           mkdir -p "$PERSONAL_DIR"
+          # Remove stale link from a previous cached run
+          rm -rf "$PERSONAL_DIR/$MOD_NAME"
           ln -s "$(pwd)/mod/Assets" "$PERSONAL_DIR/$MOD_NAME"
           echo "Linked mod assets -> $PERSONAL_DIR/$MOD_NAME"
 
@@ -76,21 +114,7 @@ jobs:
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
 
       # -----------------------------------------------------------------------
-      # 5. Free up disk space (Unity + BasSDK needs several GB)
-      # -----------------------------------------------------------------------
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
-
-      # -----------------------------------------------------------------------
-      # 6. Install Unity (no Docker — installs directly via Unity Hub)
+      # 7. Install Unity (cached after first run)
       # -----------------------------------------------------------------------
       - name: Install Unity ${{ env.UNITY_VERSION }}
         uses: RageAgainstThePixel/unity-setup@v2
@@ -101,7 +125,7 @@ jobs:
           cache-installation: true
 
       # -----------------------------------------------------------------------
-      # 7. Activate Unity Personal license
+      # 8. Activate Unity Personal license
       # -----------------------------------------------------------------------
       - name: Activate Unity license
         uses: RageAgainstThePixel/activate-unity-license@v2
@@ -109,18 +133,6 @@ jobs:
           license: 'Personal'
           username: ${{ secrets.UNITY_USERNAME }}
           password: ${{ secrets.UNITY_PASSWORD }}
-
-      # -----------------------------------------------------------------------
-      # 8. Cache Unity Library folder
-      # -----------------------------------------------------------------------
-      - name: Cache Unity Library
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.BASSDK_PATH }}/Library
-          key: Library-${{ matrix.target.name }}-${{ hashFiles('mod/Assets/**') }}
-          restore-keys: |
-            Library-${{ matrix.target.name }}-
-            Library-
 
       # -----------------------------------------------------------------------
       # 9. Build addressables
