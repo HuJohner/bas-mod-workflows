@@ -27,7 +27,6 @@ public static class CIBuildAddressables
         Debug.Log("[CI] Starting Windows addressable build...");
         SetWindowsQualityAndPlatform();
         EditorApplication.delayCall += RunBuild;
-        while (true) { }
     }
 
     public static void BuildAndroid()
