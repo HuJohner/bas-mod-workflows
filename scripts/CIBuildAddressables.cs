@@ -26,7 +26,8 @@ public static class CIBuildAddressables
         // LogProjectStructure();
         Debug.Log("[CI] Starting Windows addressable build...");
         SetWindowsQualityAndPlatform();
-        RunBuild();
+        EditorApplication.delayCall += RunBuild;
+        while (true) { }
     }
 
     public static void BuildAndroid()
@@ -111,19 +112,11 @@ public static class CIBuildAddressables
         // Debug.Log($"[CI] Raw t:AssetBundleGroup GUID count: {AssetDatabase.FindAssets("t:AssetBundleGroup").Length}");
         // Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
 
-        var results = new List<AssetBundleGroup>();
-        string[] allGuids = AssetDatabase.FindAssets("t:Object");
-        foreach (string guid in allGuids)
+        if (EditorCommon.GetAllProjectAssets<AssetBundleGroup>().Length == 0)
         {
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            if (!path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var asset = AssetDatabase.LoadAssetAtPath<AssetBundleGroup>(path);
-            if (asset != null)
-                results.Add(asset);
+            EditorApplication.delayCall += RunBuild;
+            return;
         }
-        Debug.Log($"[CI] Found {results.Count} AssetBundleGroup assets via LoadAssetAtPath");
 
         AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
         AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
@@ -132,7 +125,7 @@ public static class CIBuildAddressables
         AssetBundleBuilderGUI.runGameArguments = EditorPrefs.GetString("TRAB.RunGameArguments");
 
         AssetBundleBuilderGUI.assetBundleGroups = new List<AssetBundleGroup>();
-        foreach (AssetBundleGroup assetBundleGroup in results)
+        foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
         {
             Debug.Log($"[CI] Adding asset bundle group: {assetBundleGroup.name}");
             assetBundleGroup.selected = assetBundleGroup.isMod && assetBundleGroup.folderName != "Proto";
