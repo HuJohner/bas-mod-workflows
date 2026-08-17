@@ -111,6 +111,8 @@ public static class CIBuildAddressables
         Debug.Log($"[CI] Post-refresh state: isCompiling={EditorApplication.isCompiling}, isUpdating={EditorApplication.isUpdating}");
         Debug.Log($"[CI] Raw t:AssetBundleGroup GUID count: {AssetDatabase.FindAssets("t:AssetBundleGroup").Length}");
         Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
+        Debug.Log($"[CI] t:GameObject count: {AssetDatabase.FindAssets("t:GameObject").Length}");
+        Debug.Log($"[CI] t:Texture2D count: {AssetDatabase.FindAssets("t:Texture2D").Length}");
 
         AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
         AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
