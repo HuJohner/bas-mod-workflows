@@ -32,6 +32,15 @@ public static class CIBuildAddressables
 
     private static void RunBuild()
     {
+        Debug.Log($"[CI] Pre-refresh state: isCompiling={EditorApplication.isCompiling}, isUpdating={EditorApplication.isUpdating}");
+
+        // Force any pending import/compile to fully settle before querying the AssetDatabase
+        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+        Debug.Log($"[CI] Post-refresh state: isCompiling={EditorApplication.isCompiling}, isUpdating={EditorApplication.isUpdating}");
+        Debug.Log($"[CI] Raw t:AssetBundleGroup GUID count: {AssetDatabase.FindAssets("t:AssetBundleGroup").Length}");
+        Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
+
         AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
         AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
         AssetBundleBuilderGUI.runGameAfterBuild = EditorPrefs.GetBool("TRAB.RunGameAfterBuild");
