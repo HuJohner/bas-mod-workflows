@@ -84,7 +84,21 @@ jobs:
           activateLicense: false
         displayName: 'Setup Unity'
 
-      # 6. Build addressables
+      # 6. Explicitly activate the manual license with the Licensing Client
+      - powershell: |
+          $unityExe = "C:\Program Files\Unity\Hub\Editor\${{ parameters.unityVersion }}\Editor\Unity.exe"
+          $licenseFile = "$env:ProgramData\Unity\Unity_lic.ulf"
+
+          & $unityExe -batchmode -quit -nographics -manualLicenseFile "$licenseFile" -logFile -
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "License activation failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          Write-Host "License activated successfully"
+        displayName: 'Activate Unity license'
+
+      # 7. Build addressables
       - task: UnityBuildTask@3
         inputs:
           unityProjectPath: '$(BASSDK_PATH)'
@@ -96,7 +110,7 @@ jobs:
           outputPath: '$(OUTPUT_PATH)'
           outputFileName: 'drop'
 
-      # 7. Publish artifacts
+      # 8. Publish artifacts
       - task: PublishBuildArtifacts@1
         inputs:
           PathtoPublish: '$(OUTPUT_PATH)'
