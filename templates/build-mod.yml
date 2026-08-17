@@ -1,0 +1,100 @@
+parameters:
+  - name: unityVersion
+    type: string
+    default: '2021.3.38f1'
+
+jobs:
+  - job: BuildMod
+    displayName: 'Build Mod Addressables (Reusable)'
+    pool:
+      vmImage: 'windows-latest'
+    strategy:
+      matrix:
+        Windows:
+          buildTarget: 'Win64'
+          buildMethod: 'CIBuildAddressables.BuildWindows'
+          artifactName: 'mod-windows'
+        # Android:
+        #   buildTarget: 'Android'
+        #   buildMethod: 'CIBuildAddressables.BuildAndroid'
+        #   artifactName: 'mod-android'
+      maxParallel: 2
+    variables:
+      BASSDK_PATH: '$(Pipeline.Workspace)/BasSDK'
+      OUTPUT_PATH: '$(Build.ArtifactStagingDirectory)/AddressableAssets'
+    steps:
+      # 1. Check out the calling mod repo and the shared template repo
+      - checkout: self
+        path: mod
+
+      - checkout: templates
+        path: bas-mod-workflows
+
+      # 2. Clone BasSDK (cache it to avoid the ~2 min clone on every run)
+      - task: Cache@2
+        inputs:
+          key: 'BasSDK | "$(Agent.OS)" | ${{ parameters.unityVersion }}'
+          path: '$(BASSDK_PATH)'
+        displayName: 'Cache BasSDK'
+
+      - powershell: |
+          if (-not (Test-Path "$(BASSDK_PATH)/.git")) {
+            git clone --depth 1 https://dev.azure.com/Warpfrog/BasSDK/_git/BasSDK "$(BASSDK_PATH)"
+          } else {
+            Write-Host "BasSDK already present from cache"
+          }
+        displayName: 'Clone BasSDK (if not cached)'
+
+      # 3. Link mod assets + inject CI build script into BasSDK
+      - powershell: |
+          $modName = "$(Build.Repository.Name)"
+          $personalDir = "$(BASSDK_PATH)/Assets/Personal"
+          $editorDir = "$(BASSDK_PATH)/Assets/Editor"
+
+          New-Item -ItemType Directory -Force -Path $personalDir | Out-Null
+          $linkPath = Join-Path $personalDir $modName
+          if (Test-Path $linkPath) { Remove-Item $linkPath -Force -Recurse }
+          New-Item -ItemType Junction -Path $linkPath -Target "$(Pipeline.Workspace)/mod/Assets"
+          Write-Host "Linked mod assets -> $linkPath"
+
+          New-Item -ItemType Directory -Force -Path $editorDir | Out-Null
+          Copy-Item "$(Pipeline.Workspace)/bas-mod-workflows/scripts/CIBuildAddressables.cs" "$editorDir/CIBuildAddressables.cs" -Force
+          Write-Host "Injected CIBuildAddressables.cs into $editorDir"
+        displayName: 'Set up project structure'
+
+      # 4. Decode and install the manual license file (personal license)
+      - powershell: |
+          $licenseDir = "$env:ProgramData\Unity\config"
+          New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
+          $bytes = [Convert]::FromBase64String("$(unityLicenseBase64)")
+          [IO.File]::WriteAllBytes("$licenseDir\Unity_lic.ulf", $bytes)
+          Write-Host "Wrote license file to $licenseDir\Unity_lic.ulf"
+        displayName: 'Install manual license file'
+
+      # 5. Install Unity (no seat activation needed — license file handles it)
+      - task: UnitySetupTask@2
+        inputs:
+          versionSelectionMode: 'specify'
+          version: ${{ parameters.unityVersion }}
+          unityProjectPath: '$(BASSDK_PATH)'
+          activateLicense: false
+        displayName: 'Setup Unity'
+
+      # 6. Build addressables
+      - task: UnityBuildTask@3
+        inputs:
+          unityProjectPath: '$(BASSDK_PATH)'
+          versionSelectionMode: 'specify'
+          version: ${{ parameters.unityVersion }}
+          buildTarget: $(buildTarget)
+          buildScriptType: 'existing'
+          scriptExecuteMethod: $(buildMethod)
+          outputPath: '$(OUTPUT_PATH)'
+          outputFileName: 'drop'
+
+      # 7. Publish artifacts
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: '$(OUTPUT_PATH)'
+          ArtifactName: $(artifactName)
+        displayName: 'Upload artifacts ($(artifactName))'
