@@ -84,21 +84,7 @@ jobs:
             ${{ env.BASSDK_PATH }}
 
       # -----------------------------------------------------------------------
-      # 5. Restore cached Unity Library (avoids full reimport on cache hit)
-      #    Must happen BEFORE Unity starts, so it doesn't reimport everything
-      # -----------------------------------------------------------------------
-      #- name: Cache Unity Library
-      #  id: cache-library
-      #  uses: actions/cache@v4
-      #  with:
-      #    path: ${{ env.BASSDK_PATH }}/Library
-      #    key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
-      #    restore-keys: |
-      #      Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
-      #      Library-${{ matrix.target.name }}-
-
-      # -----------------------------------------------------------------------
-      # 6. Link mod assets + inject CI script into BasSDK
+      # 5. Link mod assets + inject CI script into BasSDK
       # -----------------------------------------------------------------------
       - name: Set up project structure
         run: |
@@ -117,9 +103,24 @@ jobs:
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
 
       # -----------------------------------------------------------------------
-      # 9. Build addressables
+      # 6. Restore cached Unity Library (avoids full reimport on cache hit)
+      #    Must happen BEFORE Unity starts, so it doesn't reimport everything
+      # -----------------------------------------------------------------------
+      #- name: Cache Unity Library
+      #  id: cache-library
+      #  uses: actions/cache@v4
+      #  with:
+      #    path: ${{ env.BASSDK_PATH }}/Library
+      #    key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
+      #    restore-keys: |
+      #      Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
+      #      Library-${{ matrix.target.name }}-
+
+      # -----------------------------------------------------------------------
+      # 7. Build addressables
       # -----------------------------------------------------------------------
       - name: Build addressables (${{ matrix.target.name }})
+        id: build-addressables
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -131,9 +132,13 @@ jobs:
           targetPlatform: ${{ matrix.target.build_target }}
           buildMethod: ${{ matrix.target.method }}
           allowDirtyBuild: true
+      
+      - name: Log build exit code
+        run: |
+          echo 'Build Step Exit Code: ${{ steps.build-addressables.outputs.engineExitCode }}'
 
       # -----------------------------------------------------------------------
-      # 10. Upload build output as artifacts
+      # 8. Upload build output as artifacts
       # -----------------------------------------------------------------------
       - name: Upload artifacts (${{ matrix.target.name }})
         uses: actions/upload-artifact@v4
@@ -141,5 +146,5 @@ jobs:
           name: ${{ matrix.target.artifact }}
           path: |
             ${{ env.BASSDK_PATH }}/BuildStaging/AddressableAssets/${{ matrix.target.name == 'Android' && 'Android' || 'Windows' }}/**
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30

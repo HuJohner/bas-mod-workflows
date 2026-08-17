@@ -213,7 +213,7 @@ public static class CIBuildAddressables
 
             // The end
             Debug.Log("[CI] Build completed successfully.");
-            EditorApplication.Exit(0);
+            // EditorApplication.Exit(0);
         }
         catch (System.Exception ex)
         {
