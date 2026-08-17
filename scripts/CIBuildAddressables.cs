@@ -24,7 +24,7 @@ public static class CIBuildAddressables
 
     public static void BuildWindows()
     {
-        // LogProjectStructure();
+        LogProjectStructure();
         Debug.Log("[CI] Starting Windows addressable build...");
         SetWindowsQualityAndPlatform();
         RunBuild();
@@ -62,14 +62,6 @@ public static class CIBuildAddressables
             Debug.LogError($"[CI] Assets path does not exist: {assetsPath}");
         }
 
-        // Known BasSDK markers — adjust these names if you know specific folders BasSDK ships with
-        string[] expectedMarkers = { "ThunderRoad", "AssetSorcery", "Personal" };
-        foreach (var marker in expectedMarkers)
-        {
-            bool exists = System.IO.Directory.Exists(System.IO.Path.Combine(assetsPath, marker));
-            Debug.Log($"[CI] Expected folder 'Assets/{marker}' exists: {exists}");
-        }
-
         // Confirm the mod symlink actually resolved to real files, not an empty/broken link
         string personalPath = System.IO.Path.Combine(assetsPath, "Personal");
         if (System.IO.Directory.Exists(personalPath))
@@ -81,24 +73,15 @@ public static class CIBuildAddressables
             }
         }
 
-        // Every .asset file's declared type, so we can see if AssetBundleGroup shows up under a different name
-        var allAssetGuids = AssetDatabase.FindAssets("t:ScriptableObject");
-        Debug.Log($"[CI] Total ScriptableObject assets found: {allAssetGuids.Length}");
-        var typeCounts = new Dictionary<string, int>();
-        foreach (var guid in allAssetGuids)
+        string sdkPath = System.IO.Path.Combine(assetsPath, "SDK");
+        if (System.IO.Directory.Exists(sdkPath))
         {
-            var path = AssetDatabase.GUIDToAssetPath(guid);
-            var obj = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-            var typeName = obj != null ? obj.GetType().Name : "NULL (broken script reference)";
-            typeCounts.TryGetValue(typeName, out int c);
-            typeCounts[typeName] = c + 1;
+            foreach (var sdkDir in System.IO.Directory.GetDirectories(sdkPath))
+            {
+                var count = System.IO.Directory.GetFiles(sdkDir, "*", System.IO.SearchOption.AllDirectories).Length;
+                Debug.Log($"[CI]   SDK/{System.IO.Path.GetFileName(sdkDir)}  ({count} files)");
+            }
         }
-        foreach (var kvp in typeCounts)
-        {
-            Debug.Log($"[CI]   ScriptableObject type '{kvp.Key}': {kvp.Value}");
-        }
-        Debug.Log($"[CI] t:GameObject count: {AssetDatabase.FindAssets("t:GameObject").Length}");
-        Debug.Log($"[CI] t:Texture2D count: {AssetDatabase.FindAssets("t:Texture2D").Length}");
     }
 
     private static void RunBuild()
