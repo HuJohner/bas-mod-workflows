@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         Windows:
-          buildTarget: 'Win64'
+          buildTarget: 'StandaloneWindows64'
           buildMethod: 'CIBuildAddressables.BuildWindows'
           artifactName: 'mod-windows'
         # Android:
