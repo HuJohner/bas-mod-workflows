@@ -24,7 +24,7 @@ public static class CIBuildAddressables
 
     public static void BuildWindows()
     {
-        LogProjectStructure();
+        // LogProjectStructure();
         Debug.Log("[CI] Starting Windows addressable build...");
         SetWindowsQualityAndPlatform();
         RunBuild();
@@ -106,13 +106,11 @@ public static class CIBuildAddressables
         Debug.Log($"[CI] Pre-refresh state: isCompiling={EditorApplication.isCompiling}, isUpdating={EditorApplication.isUpdating}");
 
         // Force any pending import/compile to fully settle before querying the AssetDatabase
-        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+        // AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
-        Debug.Log($"[CI] Post-refresh state: isCompiling={EditorApplication.isCompiling}, isUpdating={EditorApplication.isUpdating}");
-        Debug.Log($"[CI] Raw t:AssetBundleGroup GUID count: {AssetDatabase.FindAssets("t:AssetBundleGroup").Length}");
-        Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
-        Debug.Log($"[CI] t:GameObject count: {AssetDatabase.FindAssets("t:GameObject").Length}");
-        Debug.Log($"[CI] t:Texture2D count: {AssetDatabase.FindAssets("t:Texture2D").Length}");
+        // Debug.Log($"[CI] Post-refresh state: isCompiling={EditorApplication.isCompiling}, isUpdating={EditorApplication.isUpdating}");
+        // Debug.Log($"[CI] Raw t:AssetBundleGroup GUID count: {AssetDatabase.FindAssets("t:AssetBundleGroup").Length}");
+        // Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
 
         AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
         AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
@@ -121,7 +119,7 @@ public static class CIBuildAddressables
         AssetBundleBuilderGUI.runGameArguments = EditorPrefs.GetString("TRAB.RunGameArguments");
 
         AssetBundleBuilderGUI.assetBundleGroups = new List<AssetBundleGroup>();
-        foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
+        foreach (AssetBundleGroup assetBundleGroup in AddressableAssetSettingsDefaultObject.Settings.groups)
         {
             Debug.Log($"[CI] Adding asset bundle group: {assetBundleGroup.name}");
             assetBundleGroup.selected = assetBundleGroup.isMod && assetBundleGroup.folderName != "Proto";
@@ -215,7 +213,7 @@ public static class CIBuildAddressables
 
             // The end
             Debug.Log("[CI] Build completed successfully.");
-            // EditorApplication.Exit(0);
+            EditorApplication.Exit(0);
         }
         catch (System.Exception ex)
         {
