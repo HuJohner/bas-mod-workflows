@@ -26,10 +26,10 @@ jobs:
             method: CIBuildAddressables.BuildWindows
             build_target: StandaloneWindows64
             artifact: mod-windows
-          - name: Android
-            method: CIBuildAddressables.BuildAndroid
-            build_target: Android
-            artifact: mod-android
+          #- name: Android
+          #  method: CIBuildAddressables.BuildAndroid
+          #  build_target: Android
+          #  artifact: mod-android
 
     steps:
       # -----------------------------------------------------------------------
@@ -115,21 +115,6 @@ jobs:
           mkdir -p "$EDITOR_DIR"
           cp bas-mod-workflows/scripts/CIBuildAddressables.cs "$EDITOR_DIR/CIBuildAddressables.cs"
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
-
-      - name: Warm up Library (force full import on cache miss)
-        # xif: steps.cache-library.outputs.cache-hit != 'true'
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_USERNAME }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          projectPath: ${{ env.BASSDK_PATH }}
-          unityVersion: ${{ env.UNITY_VERSION }}
-          targetPlatform: ${{ matrix.target.build_target }}
-          buildMethod: CIBuildAddressables.DummyBuild
-          allowDirtyBuild: true
-          # deliberately dummy buildMethod - this pass only opens+imports+quits
 
       # -----------------------------------------------------------------------
       # 9. Build addressables
