@@ -96,13 +96,9 @@ public static class CIBuildAddressables
         // Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
 
         var results = new List<AssetBundleGroup>();
-        string[] allGuids = AssetDatabase.FindAssets("t:Object");
-        foreach (string guid in allGuids)
+        string[] allFiles = System.IO.Directory.GetFiles(Application.dataPath, "*.asset", System.IO.SearchOption.AllDirectories);
+        foreach (string path in allFiles)
         {
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            if (!path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
-                continue;
-
             var asset = AssetDatabase.LoadAssetAtPath<AssetBundleGroup>(path);
             if (asset != null)
                 results.Add(asset);
