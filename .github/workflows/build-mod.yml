@@ -127,8 +127,9 @@ jobs:
           projectPath: ${{ env.BASSDK_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: ${{ matrix.target.build_target }}
+          buildMethod: CIBuildAddressables.DummyBuild
           allowDirtyBuild: true
-          # deliberately no buildMethod — this pass only opens+imports+quits
+          # deliberately dummy buildMethod - this pass only opens+imports+quits
 
       # -----------------------------------------------------------------------
       # 9. Build addressables

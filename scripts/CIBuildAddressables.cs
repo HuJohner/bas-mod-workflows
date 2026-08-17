@@ -16,6 +16,12 @@ using QualityLevel = ThunderRoad.QualityLevel;
 /// </summary>
 public static class CIBuildAddressables
 {
+    public static void DummyBuild()
+    {
+        Debug.Log("[CI] Dummy build - Quitting immediately.");
+        EditorApplication.Exit(0);
+    }
+
     public static void BuildWindows()
     {
         LogProjectStructure();
