@@ -117,6 +117,7 @@ jobs:
       # 7. Install Unity (cached after first run)
       # -----------------------------------------------------------------------
       - name: Install Unity ${{ env.UNITY_VERSION }}
+        id: unity-setup
         uses: RageAgainstThePixel/unity-setup@v2
         with:
           version-file: 'none'
@@ -140,7 +141,7 @@ jobs:
       - name: Build addressables (${{ matrix.target.name }})
         uses: RageAgainstThePixel/unity-action@v2
         with:
-          editor-path: ${{ env.UNITY_EDITOR_PATH }}
+          editor-path: ${{ steps.unity-setup.outputs.editor-path }}
           project-path: ${{ env.BASSDK_PATH }}
           build-target: ${{ matrix.target.build_target }}
           log-name: ${{ matrix.target.name }}-addressables
