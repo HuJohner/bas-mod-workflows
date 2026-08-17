@@ -125,6 +125,17 @@ jobs:
           build-targets: ${{ matrix.target.build_target }}
           cache-installation: true
 
+      - name: Debug Unity Hub state
+        if: always()
+        run: |
+          echo "--- apt state ---"
+          apt list --installed 2>/dev/null | grep -i unity || echo "not in apt"
+          echo "--- filesystem ---"
+          ls -la /opt/ 2>&1
+          ls -la /opt/unityhub 2>&1 || echo "no /opt/unityhub"
+          echo "--- apt sources ---"
+          cat /etc/apt/sources.list.d/unityhub*.list 2>&1 || echo "no unity apt source"
+
       # -----------------------------------------------------------------------
       # 8. Activate Unity Personal license
       # -----------------------------------------------------------------------
