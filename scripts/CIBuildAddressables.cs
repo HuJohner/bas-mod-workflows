@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using ThunderRoad;
 using ThunderRoad.AssetSorcery;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using QualityLevel = ThunderRoad.QualityLevel;
 
@@ -112,6 +111,20 @@ public static class CIBuildAddressables
         // Debug.Log($"[CI] Raw t:AssetBundleGroup GUID count: {AssetDatabase.FindAssets("t:AssetBundleGroup").Length}");
         // Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
 
+        var results = new List<AssetBundleGroup>();
+        string[] allGuids = AssetDatabase.FindAssets("t:Object");
+        foreach (string guid in allGuids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (!path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var asset = AssetDatabase.LoadAssetAtPath<AssetBundleGroup>(path);
+            if (asset != null)
+                results.Add(asset);
+        }
+        Debug.Log($"[CI] Found {results.Count} AssetBundleGroup assets via LoadAssetAtPath");
+
         AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
         AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
         AssetBundleBuilderGUI.runGameAfterBuild = EditorPrefs.GetBool("TRAB.RunGameAfterBuild");
@@ -119,7 +132,7 @@ public static class CIBuildAddressables
         AssetBundleBuilderGUI.runGameArguments = EditorPrefs.GetString("TRAB.RunGameArguments");
 
         AssetBundleBuilderGUI.assetBundleGroups = new List<AssetBundleGroup>();
-        foreach (AssetBundleGroup assetBundleGroup in AddressableAssetSettingsDefaultObject.Settings.groups)
+        foreach (AssetBundleGroup assetBundleGroup in results)
         {
             Debug.Log($"[CI] Adding asset bundle group: {assetBundleGroup.name}");
             assetBundleGroup.selected = assetBundleGroup.isMod && assetBundleGroup.folderName != "Proto";
