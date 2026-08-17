@@ -33,7 +33,7 @@ jobs:
       # 2. Clone BasSDK (cache it to avoid the ~2 min clone on every run)
       - task: Cache@2
         inputs:
-          key: 'BasSDK | "$(Agent.OS)" | ${{ parameters.unityVersion }}'
+          key: 'BasSDK | "$(Agent.OS)" | "${{ parameters.unityVersion }}"'
           path: '$(BASSDK_PATH)'
         displayName: 'Cache BasSDK'
 
