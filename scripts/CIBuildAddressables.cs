@@ -55,24 +55,24 @@ public static class CIBuildAddressables
         // check if the android build support is installed
         if (!UnityEditor.BuildPipeline.IsBuildTargetSupported(UnityEditor.BuildTargetGroup.Android, UnityEditor.BuildTarget.Android))
         {
-            Debug.LogWarning($"Android Build Support is not installed. Please install it via the Unity Hub.");
+            Debug.LogWarning($"[CI] Android Build Support is not installed. Please install it via the Unity Hub.");
             return;
         }
         //set the quality to android
-        Debug.Log($"Setting quality to {QualityLevel.Android}");
+        Debug.Log($"[CI] Setting quality to {QualityLevel.Android}");
         QualitySettings.SetQualityLevel((int)QualityLevel.Android);
         Common.GetQualityLevel(true); // Force cache platform 
         AssetSorceryPlatform.AssetSorceryShaderSetPlatform(AssetSorceryPlatformRuntime.AssetSorceryGetBuildPlatform(true));
         //switch the build platform to android
         if (UnityEditor.EditorUserBuildSettings.activeBuildTarget == UnityEditor.BuildTarget.Android)
         {
-            Debug.Log("Platform is already set to Android.");
+            Debug.Log("[CI] Platform is already set to Android.");
         }
         else
         {
             UnityEditor.EditorUserBuildSettings.SwitchActiveBuildTarget(UnityEditor.BuildTargetGroup.Android, UnityEditor.BuildTarget.Android);
         }
-        Debug.Log("Set quality to Android and switched platform to Android.");
+        Debug.Log("[CI] Set quality to Android and switched platform to Android.");
     }
 
     public static void SetWindowsQualityAndPlatform()
@@ -85,13 +85,13 @@ public static class CIBuildAddressables
         //switch the build platform to Windows
         if (UnityEditor.EditorUserBuildSettings.activeBuildTarget == UnityEditor.BuildTarget.StandaloneWindows64)
         {
-            Debug.Log("Platform is already set to Windows.");
+            Debug.Log("[CI] Platform is already set to Windows.");
         }
         else
         {
             UnityEditor.EditorUserBuildSettings.SwitchActiveBuildTarget(UnityEditor.BuildTargetGroup.Standalone, UnityEditor.BuildTarget.StandaloneWindows64);
         }
-        Debug.Log("Set quality to Standalone and switched platform to Standalone.");
+        Debug.Log("[CI] Set quality to Standalone and switched platform to Standalone.");
 
     }
 
@@ -111,14 +111,17 @@ public static class CIBuildAddressables
 
             foreach (AssetBundleGroup assetBundleGroup in AssetBundleBuilderGUI.assetBundleGroups)
             {
+                Debug.Log($"[CI] Checking asset bundle group: {assetBundleGroup.name} (selected: {assetBundleGroup.selected})");
                 if (assetBundleGroup.selected)
                 {
                     assetBundleGroup.OnValidate();
 
+                    Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
                     AssetBundleBuilder.Build(assetBundleGroup, AssetBundleBuilderGUI.clearCache);
 
                     if (assetBundleGroup.exportAfterBuild)
                     {
+                        Debug.Log($"[CI] Exporting asset bundle group: {assetBundleGroup.name}");
                         AssetBundleBuilderGUI.Export(assetBundleGroup);
                     }
                 }
