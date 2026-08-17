@@ -113,64 +113,20 @@ jobs:
           cp bas-mod-workflows/scripts/CIBuildAddressables.cs "$EDITOR_DIR/CIBuildAddressables.cs"
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
 
-      - name: Install Unity Hub 3.18.0 (pinned — stable's current 3.20.1 is broken)
-        run: |
-          sudo install -d /etc/apt/keyrings
-          curl -fsSL https://hub.unity3d.com/linux/keys/public | sudo gpg --dearmor -o /etc/apt/keyrings/unityhub.gpg
-          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/unityhub.gpg] https://hub.unity3d.com/linux/repos/deb stable main" | sudo tee /etc/apt/sources.list.d/unityhub.list
-          sudo apt-get update
-          UNITYHUB_VERSION=$(apt-cache madison unityhub | grep '3.18.0' | head -1 | awk '{print $3}')
-          if [ -z "$UNITYHUB_VERSION" ]; then
-            echo "3.18.0 not found in apt feed, exiting to fall back to direct .deb"
-            exit 1
-          fi
-          sudo apt-get install -y --allow-downgrades "unityhub=$UNITYHUB_VERSION"
-          unityhub --version
-
-      # -----------------------------------------------------------------------
-      # 7. Install Unity (cached after first run)
-      # -----------------------------------------------------------------------
-      - name: Install Unity ${{ env.UNITY_VERSION }}
-        id: unity-setup
-        uses: RageAgainstThePixel/unity-setup@v2
-        with:
-          version-file: 'none'
-          unity-version: ${{ env.UNITY_VERSION }}
-          build-targets: ${{ matrix.target.build_target }}
-          cache-installation: true
-
-      - name: Debug Unity Hub state
-        if: always()
-        run: |
-          echo "--- apt state ---"
-          apt list --installed 2>/dev/null | grep -i unity || echo "not in apt"
-          echo "--- filesystem ---"
-          ls -la /opt/ 2>&1
-          ls -la /opt/unityhub 2>&1 || echo "no /opt/unityhub"
-          echo "--- apt sources ---"
-          cat /etc/apt/sources.list.d/unityhub*.list 2>&1 || echo "no unity apt source"
-
-      # -----------------------------------------------------------------------
-      # 8. Activate Unity Personal license
-      # -----------------------------------------------------------------------
-      - name: Activate Unity license
-        uses: RageAgainstThePixel/activate-unity-license@v2
-        with:
-          license: 'Personal'
-          username: ${{ secrets.UNITY_USERNAME }}
-          password: ${{ secrets.UNITY_PASSWORD }}
-
       # -----------------------------------------------------------------------
       # 9. Build addressables
       # -----------------------------------------------------------------------
       - name: Build addressables (${{ matrix.target.name }})
-        uses: RageAgainstThePixel/unity-action@v2
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_USERNAME }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          editor-path: ${{ steps.unity-setup.outputs.editor-path }}
-          project-path: ${{ env.BASSDK_PATH }}
-          build-target: ${{ matrix.target.build_target }}
-          log-name: ${{ matrix.target.name }}-addressables
-          args: '-batchmode -quit -executeMethod ${{ matrix.target.method }}'
+          projectPath: ${{ env.BASSDK_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: ${{ matrix.target.build_target }}
+          buildMethod: ${{ matrix.target.method }}
+          allowDirtyBuild: true
 
       # -----------------------------------------------------------------------
       # 10. Upload build output as artifacts
