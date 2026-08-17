@@ -100,7 +100,6 @@ public static class CIBuildAddressables
         foreach (string guid in allGuids)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            Debug.Log($"[CI] Checking {guid} at {path}");
             if (!path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
                 continue;
 
