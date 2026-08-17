@@ -87,15 +87,15 @@ jobs:
       # 5. Restore cached Unity Library (avoids full reimport on cache hit)
       #    Must happen BEFORE Unity starts, so it doesn't reimport everything
       # -----------------------------------------------------------------------
-      - name: Cache Unity Library
-        id: cache-library
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.BASSDK_PATH }}/Library
-          key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
-          restore-keys: |
-            Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
-            Library-${{ matrix.target.name }}-
+      #- name: Cache Unity Library
+      #  id: cache-library
+      #  uses: actions/cache@v4
+      #  with:
+      #    path: ${{ env.BASSDK_PATH }}/Library
+      #    key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
+      #    restore-keys: |
+      #      Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
+      #      Library-${{ matrix.target.name }}-
 
       # -----------------------------------------------------------------------
       # 6. Link mod assets + inject CI script into BasSDK
