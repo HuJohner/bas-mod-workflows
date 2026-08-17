@@ -2,6 +2,9 @@ parameters:
   - name: unityVersion
     type: string
     default: '2021.3.38f1'
+  - name: unityRevision
+    type: string
+    default: '7a2fa5d8d101'
 
 jobs:
   - job: BuildMod
@@ -76,6 +79,7 @@ jobs:
         inputs:
           versionSelectionMode: 'specify'
           version: ${{ parameters.unityVersion }}
+          revision: ${{ parameters.unityRevision }}
           unityProjectPath: '$(BASSDK_PATH)'
           activateLicense: false
         displayName: 'Setup Unity'
