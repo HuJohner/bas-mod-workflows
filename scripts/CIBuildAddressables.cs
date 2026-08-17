@@ -91,6 +91,8 @@ public static class CIBuildAddressables
         {
             Debug.Log($"[CI]   ScriptableObject type '{kvp.Key}': {kvp.Value}");
         }
+        Debug.Log($"[CI] t:GameObject count: {AssetDatabase.FindAssets("t:GameObject").Length}");
+        Debug.Log($"[CI] t:Texture2D count: {AssetDatabase.FindAssets("t:Texture2D").Length}");
     }
 
     private static void RunBuild()
