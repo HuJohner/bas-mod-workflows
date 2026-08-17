@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ThunderRoad;
 using ThunderRoad.AssetSorcery;
 using UnityEditor;
@@ -26,7 +27,7 @@ public static class CIBuildAddressables
         // LogProjectStructure();
         Debug.Log("[CI] Starting Windows addressable build...");
         SetWindowsQualityAndPlatform();
-        EditorApplication.delayCall += RunBuild;
+        RunBuild();
     }
 
     public static void BuildAndroid()
@@ -111,11 +112,20 @@ public static class CIBuildAddressables
         // Debug.Log($"[CI] Raw t:AssetBundleGroup GUID count: {AssetDatabase.FindAssets("t:AssetBundleGroup").Length}");
         // Debug.Log($"[CI] Total assets in project (t:Object): {AssetDatabase.FindAssets("t:Object").Length}");
 
-        if (EditorCommon.GetAllProjectAssets<AssetBundleGroup>().Length == 0)
+        var results = new List<AssetBundleGroup>();
+        string[] allGuids = AssetDatabase.FindAssets("t:Object");
+        foreach (string guid in allGuids)
         {
-            EditorApplication.delayCall += RunBuild;
-            return;
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            Debug.Log($"[CI] Checking {guid} at {path}");
+            if (!path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var asset = AssetDatabase.LoadAssetAtPath<AssetBundleGroup>(path);
+            if (asset != null)
+                results.Add(asset);
         }
+        Debug.Log($"[CI] Found {results.Count} AssetBundleGroup assets via LoadAssetAtPath");
 
         AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
         AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
