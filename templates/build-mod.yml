@@ -88,12 +88,26 @@ jobs:
       - powershell: |
           $unityExe = "C:\Program Files\Unity\Hub\Editor\${{ parameters.unityVersion }}\Editor\Unity.exe"
           $licenseFile = "$env:ProgramData\Unity\Unity_lic.ulf"
+          $logFile = "$(Agent.TempDirectory)\unity_activate.log"
 
-          & $unityExe -batchmode -quit -nographics -manualLicenseFile "$licenseFile" -logFile -
+          if (-not (Test-Path $licenseFile)) {
+            Write-Error "License file not found at $licenseFile"
+            exit 1
+          }
+          Write-Host "License file size: $((Get-Item $licenseFile).Length) bytes"
 
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "License activation failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
+          $proc = Start-Process -FilePath $unityExe `
+            -ArgumentList "-batchmode","-quit","-nographics","-manualLicenseFile","`"$licenseFile`"","-logFile","`"$logFile`"" `
+            -Wait -PassThru
+
+          Write-Host "Unity exited with code $($proc.ExitCode)"
+          Write-Host "----- Unity activation log -----"
+          Get-Content $logFile -ErrorAction SilentlyContinue | Write-Host
+          Write-Host "---------------------------------"
+
+          if ($proc.ExitCode -ne 0) {
+            Write-Error "License activation failed with exit code $($proc.ExitCode)"
+            exit $proc.ExitCode
           }
           Write-Host "License activated successfully"
         displayName: 'Activate Unity license'
