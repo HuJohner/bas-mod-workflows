@@ -113,6 +113,20 @@ jobs:
           cp bas-mod-workflows/scripts/CIBuildAddressables.cs "$EDITOR_DIR/CIBuildAddressables.cs"
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
 
+      - name: Install Unity Hub 3.18.0 (pinned — stable's current 3.20.1 is broken)
+        run: |
+          sudo install -d /etc/apt/keyrings
+          curl -fsSL https://hub.unity3d.com/linux/keys/public | sudo gpg --dearmor -o /etc/apt/keyrings/unityhub.gpg
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/unityhub.gpg] https://hub.unity3d.com/linux/repos/deb stable main" | sudo tee /etc/apt/sources.list.d/unityhub.list
+          sudo apt-get update
+          UNITYHUB_VERSION=$(apt-cache madison unityhub | grep '3.18.0' | head -1 | awk '{print $3}')
+          if [ -z "$UNITYHUB_VERSION" ]; then
+            echo "3.18.0 not found in apt feed, exiting to fall back to direct .deb"
+            exit 1
+          fi
+          sudo apt-get install -y --allow-downgrades "unityhub=$UNITYHUB_VERSION"
+          unityhub --version
+
       # -----------------------------------------------------------------------
       # 7. Install Unity (cached after first run)
       # -----------------------------------------------------------------------
