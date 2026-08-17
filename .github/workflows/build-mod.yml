@@ -3,6 +3,8 @@ name: Build Mod Addressables (Reusable)
 on:
   workflow_call:
     secrets:
+      UNITY_LICENSE:
+        required: true
       UNITY_USERNAME:
         required: true
       UNITY_PASSWORD:
@@ -60,7 +62,7 @@ jobs:
           dotnet: true
           haskell: true
           large-packages: true
-          docker-images: true
+          docker-images: false # keep false — unity-builder needs to pull its own image
           swap-storage: false  # Keep swap — helps with memory-starved imports
 
       # -----------------------------------------------------------------------
@@ -119,6 +121,7 @@ jobs:
       - name: Build addressables (${{ matrix.target.name }})
         uses: game-ci/unity-builder@v4
         env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_USERNAME }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
