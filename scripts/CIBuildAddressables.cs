@@ -41,6 +41,7 @@ public static class CIBuildAddressables
         AssetBundleBuilderGUI.assetBundleGroups = new List<AssetBundleGroup>();
         foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
         {
+            Debug.Log($"[CI] Adding asset bundle group: {assetBundleGroup.name}");
             assetBundleGroup.selected = assetBundleGroup.isMod && assetBundleGroup.folderName != "Proto";
             assetBundleGroup.exportAfterBuild = false;
             AssetBundleBuilderGUI.assetBundleGroups.Add(assetBundleGroup);
@@ -99,12 +100,15 @@ public static class CIBuildAddressables
     {
         try
         {
+            Debug.Log("[CI] Opening new scene.");
             // Open a new scene
             UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Single);
 
+            Debug.Log("[CI] Unloading unused assets.");
             EditorUtility.UnloadUnusedAssetsImmediate(); // https://issuetracker.unity3d.com/issues/addressables-very-slow-build-when-editor-heap-memory-is-full
             GC.Collect();
 
+            Debug.Log("[CI] Close Addressables Groups window.");
             //AssetBundleBuilderGUI.CloseAddressablesGroupsWindow(); // https://forum.unity.com/threads/buildplayercontent-calculate-asset-dependency-data-takes-forever.1015951/
             var window = EditorWindow.GetWindow(typeof(EditorWindow), false, "Addressables Groups");
             if (window.titleContent.text == "Addressables Groups") window.Close();
