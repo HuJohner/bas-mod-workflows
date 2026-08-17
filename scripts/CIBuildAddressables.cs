@@ -18,6 +18,7 @@ public static class CIBuildAddressables
 {
     public static void BuildWindows()
     {
+        LogProjectStructure();
         Debug.Log("[CI] Starting Windows addressable build...");
         SetWindowsQualityAndPlatform();
         RunBuild();
@@ -25,9 +26,71 @@ public static class CIBuildAddressables
 
     public static void BuildAndroid()
     {
+        LogProjectStructure();
         Debug.Log("[CI] Starting Android addressable build...");
         SetAndroidQualityAndPlatform();
         RunBuild();
+    }
+
+    private static void LogProjectStructure()
+    {
+        Debug.Log($"[CI] Application.dataPath: {Application.dataPath}");
+        Debug.Log($"[CI] Application.productName: {Application.productName}");
+        Debug.Log($"[CI] Application.companyName: {Application.companyName}");
+
+        // Top-level folders directly under Assets/
+        string assetsPath = Application.dataPath;
+        if (System.IO.Directory.Exists(assetsPath))
+        {
+            var topLevelDirs = System.IO.Directory.GetDirectories(assetsPath);
+            Debug.Log($"[CI] Top-level folders under Assets/ ({topLevelDirs.Length}):");
+            foreach (var dir in topLevelDirs)
+            {
+                var name = System.IO.Path.GetFileName(dir);
+                var fileCount = System.IO.Directory.GetFiles(dir, "*", System.IO.SearchOption.AllDirectories).Length;
+                Debug.Log($"[CI]   {name}  ({fileCount} files)");
+            }
+        }
+        else
+        {
+            Debug.LogError($"[CI] Assets path does not exist: {assetsPath}");
+        }
+
+        // Known BasSDK markers — adjust these names if you know specific folders BasSDK ships with
+        string[] expectedMarkers = { "ThunderRoad", "AssetSorcery", "Personal" };
+        foreach (var marker in expectedMarkers)
+        {
+            bool exists = System.IO.Directory.Exists(System.IO.Path.Combine(assetsPath, marker));
+            Debug.Log($"[CI] Expected folder 'Assets/{marker}' exists: {exists}");
+        }
+
+        // Confirm the mod symlink actually resolved to real files, not an empty/broken link
+        string personalPath = System.IO.Path.Combine(assetsPath, "Personal");
+        if (System.IO.Directory.Exists(personalPath))
+        {
+            foreach (var modDir in System.IO.Directory.GetDirectories(personalPath))
+            {
+                var count = System.IO.Directory.GetFiles(modDir, "*", System.IO.SearchOption.AllDirectories).Length;
+                Debug.Log($"[CI]   Personal/{System.IO.Path.GetFileName(modDir)}  ({count} files)");
+            }
+        }
+
+        // Every .asset file's declared type, so we can see if AssetBundleGroup shows up under a different name
+        var allAssetGuids = AssetDatabase.FindAssets("t:ScriptableObject");
+        Debug.Log($"[CI] Total ScriptableObject assets found: {allAssetGuids.Length}");
+        var typeCounts = new Dictionary<string, int>();
+        foreach (var guid in allAssetGuids)
+        {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            var obj = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+            var typeName = obj != null ? obj.GetType().Name : "NULL (broken script reference)";
+            typeCounts.TryGetValue(typeName, out int c);
+            typeCounts[typeName] = c + 1;
+        }
+        foreach (var kvp in typeCounts)
+        {
+            Debug.Log($"[CI]   ScriptableObject type '{kvp.Key}': {kvp.Value}");
+        }
     }
 
     private static void RunBuild()
