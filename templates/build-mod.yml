@@ -67,7 +67,7 @@ jobs:
 
       # 4. Decode and install the manual license file (personal license)
       - powershell: |
-          $licenseDir = "$env:ProgramData\Unity\config"
+          $licenseDir = "$env:ProgramData\Unity"
           New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
           $bytes = [Convert]::FromBase64String("$(unityLicenseBase64)")
           [IO.File]::WriteAllBytes("$licenseDir\Unity_lic.ulf", $bytes)
