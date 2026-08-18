@@ -1,6 +1,7 @@
 using System.Linq;
 using ThunderRoad;
 using ThunderRoad.AssetSorcery;
+using UnityEditor.AddressableAssets;
 using UnityEngine;
 using QualityLevel = ThunderRoad.QualityLevel;
 
@@ -34,6 +35,17 @@ public static class CIBuildAddressables
         {
             Debug.LogError("[CI] No AssetBundleGroup found that is marked as a mod. Please create one and mark it as a mod.");
             return;
+        }
+
+        Debug.Log($"[CI] Listing all asset groups");
+        foreach (var assetGroup in AddressableAssetSettingsDefaultObject.Settings.groups)
+        {
+            Debug.Log($"[CI] All Asset group: {assetGroup.name}");
+        }
+        Debug.Log($"[CI] Listing mod asset groups");
+        foreach (var assetGroup in assetBundleGroup.addressableAssetGroups)
+        {
+            Debug.Log($"[CI] Mod Asset group: {assetGroup.name}");
         }
 
         Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
