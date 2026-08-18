@@ -52,19 +52,7 @@ jobs:
           path: mod
 
       # -----------------------------------------------------------------------
-      # 3. Exclude the workspace from Windows Defender real-time scanning
-      #    Unity's parallel import workers hammer thousands of small files
-      #    under this tree; Defender scanning them concurrently can cause
-      #    file-lock contention that crashes an import worker (0xc0000005).
-      # -----------------------------------------------------------------------
-      - name: Exclude workspace from Windows Defender
-        shell: powershell
-        run: |
-          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
-          Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
-
-      # -----------------------------------------------------------------------
-      # 4. Restore cached BasSDK clone (avoids ~2 min clone + full reimport)
+      # 3. Restore cached BasSDK clone (avoids ~2 min clone + full reimport)
       # -----------------------------------------------------------------------
       - name: Cache BasSDK
         id: cache-bassdk
@@ -75,7 +63,7 @@ jobs:
           # No restore-keys — BasSDK cache must be exact version match
 
       # -----------------------------------------------------------------------
-      # 5. Clone BasSDK if cache miss (avoids ~2 min clone + full reimport)
+      # 4. Clone BasSDK if cache miss (avoids ~2 min clone + full reimport)
       # -----------------------------------------------------------------------
       - name: Clone BasSDK
         if: steps.cache-bassdk.outputs.cache-hit != 'true'
@@ -86,7 +74,7 @@ jobs:
             ${{ env.BASSDK_PATH }}
 
       # -----------------------------------------------------------------------
-      # 6. Link mod assets + inject CI script into BasSDK
+      # 5. Link mod assets + inject CI script into BasSDK
       # -----------------------------------------------------------------------
       - name: Set up project structure
         shell: bash
@@ -106,7 +94,7 @@ jobs:
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
 
       # -----------------------------------------------------------------------
-      # 7. Restore cached Unity Library (avoids full reimport on cache hit)
+      # 6. Restore cached Unity Library (avoids full reimport on cache hit)
       #    Must happen BEFORE Unity starts, so it doesn't reimport everything
       # -----------------------------------------------------------------------
       #- name: Cache Unity Library
@@ -120,7 +108,7 @@ jobs:
       #      Library-${{ matrix.target.name }}-
 
       # -----------------------------------------------------------------------
-      # 8. Build addressables
+      # 7. Build addressables
       # -----------------------------------------------------------------------
       - name: Build addressables (${{ matrix.target.name }})
         id: build-addressables
@@ -135,6 +123,7 @@ jobs:
           targetPlatform: ${{ matrix.target.build_target }}
           buildMethod: ${{ matrix.target.method }}
           allowDirtyBuild: true
+          containerMemory: 12g
 
       - name: Log build exit code
         shell: bash
@@ -142,7 +131,7 @@ jobs:
           echo 'Build Step Exit Code: ${{ steps.build-addressables.outputs.engineExitCode }}'
 
       # -----------------------------------------------------------------------
-      # 9. Upload build output as artifacts
+      # 8. Upload build output as artifacts
       # -----------------------------------------------------------------------
       - name: Upload artifacts (${{ matrix.target.name }})
         uses: actions/upload-artifact@v4
