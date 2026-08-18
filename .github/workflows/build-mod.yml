@@ -131,6 +131,17 @@ jobs:
           allowDirtyBuild: true
           customParameters: -desiredWorkerCount 1 -standbyWorkerCount 1
 
+      - name: List addressables output
+        shell: bash
+        run: |
+          OUTPUT_DIR="${{ env.BASSDK_PATH }}/BuildStaging/AddressableAssets/${{ matrix.target.name == 'Android' && 'Android' || 'Windows' }}"
+          echo "Listing: $OUTPUT_DIR"
+          if [ -d "$OUTPUT_DIR" ]; then
+            find "$OUTPUT_DIR" -type f -exec ls -lh {} \;
+          else
+            echo "::warning::Output directory does not exist: $OUTPUT_DIR"
+          fi
+
       # -----------------------------------------------------------------------
       # 8. Upload build output as artifacts
       # -----------------------------------------------------------------------
