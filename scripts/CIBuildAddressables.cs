@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ThunderRoad;
 using ThunderRoad.AssetSorcery;
 using UnityEngine;
@@ -29,6 +30,7 @@ public static class CIBuildAddressables
     private static void RunBuild()
     {
         Debug.Log("[CI] Running build...");
+        var assetBundleGroups = new List<AssetBundleGroup>();
         foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
         {
             Debug.Log($"[CI] Checking asset bundle group: {assetBundleGroup.name}");
@@ -36,7 +38,12 @@ public static class CIBuildAddressables
             if (!assetBundleGroup.isMod || assetBundleGroup.folderName == "Proto")
                 continue;
 
-            Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");    
+            assetBundleGroups.Add(assetBundleGroup);
+        }
+
+        foreach (var assetBundleGroup in assetBundleGroups)
+        {
+            Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
             AssetBundleBuilder.Build(assetBundleGroup, false);
         }
     }
