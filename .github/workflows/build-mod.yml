@@ -75,6 +75,12 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 5. Link mod assets + inject CI script into BasSDK
+      #    Uses a *relative* symlink (not junction, not absolute symlink):
+      #    junctions and absolute symlinks bake in a host path that becomes
+      #    invalid once unity-builder's Docker container remaps this
+      #    workspace to c:/github/workspace. A relative symlink resolves
+      #    relative to its own directory, so it survives the remap since
+      #    BasSDK and mod are both under the same mounted root.
       # -----------------------------------------------------------------------
       - name: Set up project structure
         shell: bash
@@ -86,7 +92,7 @@ jobs:
           mkdir -p "$PERSONAL_DIR"
           # Remove stale link from a previous cached run
           rm -rf "$PERSONAL_DIR/$MOD_NAME"
-          cmd //c mklink //J "$(cygpath -w "$PERSONAL_DIR/$MOD_NAME")" "$(cygpath -w "$(pwd)/mod/Assets")"
+          cmd //c mklink //D "$(cygpath -w "$PERSONAL_DIR/$MOD_NAME")" "..\..\..\mod\Assets"
           echo "Linked mod assets -> $PERSONAL_DIR/$MOD_NAME"
 
           mkdir -p "$EDITOR_DIR"
@@ -97,15 +103,15 @@ jobs:
       # 6. Restore cached Unity Library (avoids full reimport on cache hit)
       #    Must happen BEFORE Unity starts, so it doesn't reimport everything
       # -----------------------------------------------------------------------
-      #- name: Cache Unity Library
-      #  id: cache-library
-      #  uses: actions/cache@v4
-      #  with:
-      #    path: ${{ env.BASSDK_PATH }}/Library
-      #    key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
-      #    restore-keys: |
-      #      Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
-      #      Library-${{ matrix.target.name }}-
+      - name: Cache Unity Library
+        id: cache-library
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BASSDK_PATH }}/Library
+          key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
+          restore-keys: |
+            Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
+            Library-${{ matrix.target.name }}-
 
       # -----------------------------------------------------------------------
       # 7. Build addressables
@@ -124,11 +130,6 @@ jobs:
           buildMethod: ${{ matrix.target.method }}
           allowDirtyBuild: true
           customParameters: -desiredWorkerCount 1 -standbyWorkerCount 1
-
-      - name: Log build exit code
-        shell: bash
-        run: |
-          echo 'Build Step Exit Code: ${{ steps.build-addressables.outputs.engineExitCode }}'
 
       # -----------------------------------------------------------------------
       # 8. Upload build output as artifacts
