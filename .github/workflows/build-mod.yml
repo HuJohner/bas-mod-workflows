@@ -60,7 +60,7 @@ jobs:
 
           # Extract unique configuration names from the .sln
           $content = Get-Content $sln -Raw
-          $configs = [regex]::Matches($content, '^\s*(\w+)\|[^ ]+ = \1\|', 'Multiline') |
+          $configs = [regex]::Matches($content, '^\s*(\w+)\|[^=]+ = \1\|', 'Multiline') |
                      ForEach-Object { $_.Groups[1].Value } |
                      Select-Object -Unique
 
