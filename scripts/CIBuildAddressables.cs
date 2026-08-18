@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Linq;
 using ThunderRoad;
 using ThunderRoad.AssetSorcery;
 using UnityEngine;
@@ -29,23 +29,15 @@ public static class CIBuildAddressables
 
     private static void RunBuild()
     {
-        Debug.Log("[CI] Running build...");
-        var assetBundleGroups = new List<AssetBundleGroup>();
-        foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
+        var assetBundleGroup = EditorCommon.GetAllProjectAssets<AssetBundleGroup>().FirstOrDefault(g => g.isMod && g.folderName != "Proto");
+        if (assetBundleGroup == null)
         {
-            Debug.Log($"[CI] Checking asset bundle group: {assetBundleGroup.name}");
-
-            if (!assetBundleGroup.isMod || assetBundleGroup.folderName == "Proto")
-                continue;
-
-            assetBundleGroups.Add(assetBundleGroup);
+            Debug.LogError("[CI] No AssetBundleGroup found that is marked as a mod. Please create one and mark it as a mod.");
+            return;
         }
 
-        foreach (var assetBundleGroup in assetBundleGroups)
-        {
-            Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
-            AssetBundleBuilder.Build(assetBundleGroup, false);
-        }
+        Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
+        AssetBundleBuilder.Build(assetBundleGroup, false);
     }
 
     public static void SetAndroidQualityAndPlatform()
