@@ -64,14 +64,7 @@ jobs:
                      ForEach-Object { $_.Groups[1].Value } |
                      Select-Object -Unique
 
-          if ($configs.Count -eq 0) {
-            throw "No configurations found in solution"
-          }
-
           Write-Host "Available configurations: $($configs -join ', ')"
-
-          $firstConfig = $configs[0]
-          Write-Host "Fallback (first) configuration: $firstConfig"
 
           function Get-PreferredConfig([string]$preferred) {
             $match = $configs | Where-Object { $_ -ieq $preferred } | Select-Object -First 1
@@ -79,35 +72,36 @@ jobs:
               Write-Host "Using preferred configuration: $match"
               return $match
             }
-            Write-Host "Preferred '$preferred' not found → falling back to '$firstConfig'"
-            return $firstConfig
+            Write-Host "Preferred '$preferred' not found → using MSBuild default"
+            return $null   # signal to omit /p:Configuration
           }
 
           # ---------- Windows ----------
           if ("${{ inputs.build_windows }}" -eq "true") {
             $winConfig = Get-PreferredConfig "Windows"
-            # Also accept common aliases
-            if ($winConfig -eq $firstConfig) {
-              $alias = $configs | Where-Object { $_ -match '^(Debug|Release|Windows)$' } | Select-Object -First 1
-              if ($alias) { $winConfig = $alias }
+
+            $args = @($sln, "/p:OutputPath=bin\Windows\", "/v:minimal")
+            if ($winConfig) {
+              $args += "/p:Configuration=$winConfig"
             }
 
-            Write-Host "Building Windows with Configuration=$winConfig"
-            msbuild $sln `
-              /p:Configuration=$winConfig `
-              /p:OutputPath=bin\Windows\ `
-              /v:minimal
+            Write-Host "Building Windows$(if ($winConfig) { " with Configuration=$winConfig" } else { " (default config)" })"
+            & msbuild @args
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
           # ---------- Android ----------
           if ("${{ inputs.build_android }}" -eq "true") {
             $androidConfig = Get-PreferredConfig "Android"
 
-            Write-Host "Building Android with Configuration=$androidConfig"
-            msbuild $sln `
-              /p:Configuration=$androidConfig `
-              /p:OutputPath=bin\Android\ `
-              /v:minimal
+            $args = @($sln, "/p:OutputPath=bin\Android\", "/v:minimal")
+            if ($androidConfig) {
+              $args += "/p:Configuration=$androidConfig"
+            }
+
+            Write-Host "Building Android$(if ($androidConfig) { " with Configuration=$androidConfig" } else { " (default config)" })"
+            & msbuild @args
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
       - name: Upload DLL artifacts
