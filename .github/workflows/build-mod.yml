@@ -2,6 +2,17 @@ name: Build Mod Addressables (Reusable)
 
 on:
   workflow_call:
+    inputs:
+      build_windows:
+        description: 'Build the Windows target'
+        type: boolean
+        default: true
+        required: false
+      build_android:
+        description: 'Build the Android target'
+        type: boolean
+        default: false
+        required: false
     secrets:
       UNITY_LICENSE:
         required: true
@@ -30,6 +41,13 @@ jobs:
             method: CIBuildAddressables.BuildAndroid
             build_target: Android
             artifact: mod-android
+        exclude:
+          # Exclude Windows when build_windows is false
+          - target:
+              name: ${{ inputs.build_windows && 'dummy' || 'Windows' }}
+          # Exclude Android when build_android is false
+          - target:
+              name: ${{ inputs.build_android && 'dummy' || 'Android' }}
 
     steps:
       # -----------------------------------------------------------------------
