@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using ThunderRoad;
 using ThunderRoad.AssetSorcery;
@@ -45,6 +46,15 @@ public static class CIBuildAddressables
 
         Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
         AssetBundleBuilder.Build(assetBundleGroup, false);
+
+        string manifestTempFolderPath = AssetBundleBuilderGUI.GenerateManifest(assetBundleGroup);
+        AssetBundleBuilder.CopyDirectory(manifestTempFolderPath, AssetBundleBuilder.assetsLocalPath);
+        Debug.Log($"[CI] Copied manifest {manifestTempFolderPath} to {AssetBundleBuilder.assetsLocalPath}");
+
+        // Excludes the mod folder name since we don't know it when we set the symlink in the action
+        string catalogFullPath = Path.Combine(Directory.GetCurrentDirectory(), ThunderRoadSettings.current.catalogsEditorPath, "CI");
+        AssetBundleBuilder.CopyDirectory(catalogFullPath, AssetBundleBuilder.assetsLocalPath);
+        Debug.Log($"[CI] Copied json folder {catalogFullPath} to {AssetBundleBuilder.assetsLocalPath}");
     }
 
     public static void SetAndroidQualityAndPlatform()

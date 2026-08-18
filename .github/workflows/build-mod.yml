@@ -3,10 +3,6 @@ name: Build Mod
 on:
   workflow_call:
     inputs:
-      solution_path:
-        description: 'Path to VS Solution (relative to repo root)'
-        type: string
-        required: false
       assets_path:
         description: 'Path to Assets folder (relative to repo root)'
         type: string
@@ -40,82 +36,6 @@ env:
   UNITY_VERSION: '2021.3.38f1'
 
 jobs:
-  build-dlls:
-    name: Build DLLs
-    if: ${{ inputs.solution_path != '' }}
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Restore NuGet packages
-        run: |
-          nuget restore ${{ inputs.solution_path }}
-
-      - name: Detect available configurations and build
-        shell: pwsh
-        run: |
-          $sln = "${{ inputs.solution_path }}"
-          if (-not (Test-Path $sln)) {
-            throw "Solution file not found: $sln"
-          }
-
-          # Extract unique configuration names from the .sln
-          $content = Get-Content $sln -Raw
-          $configs = [regex]::Matches($content, '^\s*(\w+)\|[^=]+ = \1\|', 'Multiline') |
-                     ForEach-Object { $_.Groups[1].Value } |
-                     Select-Object -Unique
-
-          Write-Host "Available configurations: $($configs -join ', ')"
-
-          function Get-PreferredConfig([string]$preferred) {
-            $match = $configs | Where-Object { $_ -ieq $preferred } | Select-Object -First 1
-            if ($match) {
-              Write-Host "Using preferred configuration: $match"
-              return $match
-            }
-            Write-Host "Preferred '$preferred' not found → using MSBuild default"
-            return $null   # signal to omit /p:Configuration
-          }
-
-          # ---------- Windows ----------
-          if ("${{ inputs.build_windows }}" -eq "true") {
-            $winConfig = Get-PreferredConfig "Windows"
-
-            $args = @($sln, "/p:OutputPath=bin\Windows\", "/v:minimal")
-            if ($winConfig) {
-              $args += "/p:Configuration=$winConfig"
-            }
-
-            Write-Host "Building Windows$(if ($winConfig) { " with Configuration=$winConfig" } else { " (default config)" })"
-            & msbuild @args
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-
-          # ---------- Android ----------
-          if ("${{ inputs.build_android }}" -eq "true") {
-            $androidConfig = Get-PreferredConfig "Android"
-
-            $args = @($sln, "/p:OutputPath=bin\Android\", "/v:minimal")
-            if ($androidConfig) {
-              $args += "/p:Configuration=$androidConfig"
-            }
-
-            Write-Host "Building Android$(if ($androidConfig) { " with Configuration=$androidConfig" } else { " (default config)" })"
-            & msbuild @args
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-
-      - name: Upload DLL artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: mod-dlls
-          path: |
-            bin/Windows/**
-            bin/Android/**
-          if-no-files-found: error
   build-addressables:
     name: Build (${{ matrix.target.name }})
     if: ${{ inputs.assets_path != '' }}
@@ -197,6 +117,7 @@ jobs:
           MOD_NAME="${{ github.event.repository.name }}"
           PERSONAL_DIR="${{ env.BASSDK_PATH }}/Assets/Personal"
           EDITOR_DIR="${{ env.BASSDK_PATH }}/Assets/Editor"
+          CATALOGS_DIR="${{ env.BASSDK_PATH }}/BuildStaging/Catalogs/CI"
 
           mkdir -p "$PERSONAL_DIR"
           # Remove stale link from a previous cached run
@@ -207,6 +128,12 @@ jobs:
           mkdir -p "$EDITOR_DIR"
           cp bas-mod-workflows/scripts/CIBuildAddressables.cs "$EDITOR_DIR/CIBuildAddressables.cs"
           echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
+
+          mkdir -p "$CATALOGS_DIR"
+          # Remove stale link from a previous cached run
+          rm -rf "$CATALOGS_DIR"
+          cmd //c mklink //D "$(cygpath -w "$CATALOGS_DIR")" "..\..\..\mod\${{ inputs.catalogs_path }}"
+          echo "Linked mod assets -> $CATALOGS_DIR"
 
       # -----------------------------------------------------------------------
       # 6. Restore cached Unity Library (avoids full reimport on cache hit)
