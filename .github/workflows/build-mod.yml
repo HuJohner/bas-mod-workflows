@@ -1,8 +1,22 @@
-name: Build Mod Addressables (Reusable)
+name: Build Mod
 
 on:
   workflow_call:
     inputs:
+      solution_path:
+        description: 'Path to VS Solution (relative to repo root)'
+        type: string
+        required: false
+      assets_path:
+        description: 'Path to Assets folder (relative to repo root)'
+        type: string
+        default: 'Assets'
+        required: false
+      catalogs_path:
+        description: 'Path to Catalogs folder (relative to repo root)'
+        type: string
+        default: 'Catalog'
+        required: false
       build_windows:
         description: 'Build the Windows target'
         type: boolean
@@ -26,8 +40,87 @@ env:
   UNITY_VERSION: '2021.3.38f1'
 
 jobs:
-  build:
+  build-dlls:
+    name: Build DLLs
+    if: ${{ inputs.solution_path != '' }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Detect available configurations and build
+        shell: pwsh
+        run: |
+          $sln = "${{ inputs.solution_path }}"
+          if (-not (Test-Path $sln)) {
+            throw "Solution file not found: $sln"
+          }
+
+          # Extract unique configuration names from the .sln
+          $content = Get-Content $sln -Raw
+          $configs = [regex]::Matches($content, '^\s*(\w+)\|[^ ]+ = \1\|', 'Multiline') |
+                     ForEach-Object { $_.Groups[1].Value } |
+                     Select-Object -Unique
+
+          if ($configs.Count -eq 0) {
+            throw "No configurations found in solution"
+          }
+
+          Write-Host "Available configurations: $($configs -join ', ')"
+
+          $firstConfig = $configs[0]
+          Write-Host "Fallback (first) configuration: $firstConfig"
+
+          function Get-PreferredConfig([string]$preferred) {
+            $match = $configs | Where-Object { $_ -ieq $preferred } | Select-Object -First 1
+            if ($match) {
+              Write-Host "Using preferred configuration: $match"
+              return $match
+            }
+            Write-Host "Preferred '$preferred' not found → falling back to '$firstConfig'"
+            return $firstConfig
+          }
+
+          # ---------- Windows ----------
+          if ("${{ inputs.build_windows }}" -eq "true") {
+            $winConfig = Get-PreferredConfig "Windows"
+            # Also accept common aliases
+            if ($winConfig -eq $firstConfig) {
+              $alias = $configs | Where-Object { $_ -match '^(Debug|Release|Windows)$' } | Select-Object -First 1
+              if ($alias) { $winConfig = $alias }
+            }
+
+            Write-Host "Building Windows with Configuration=$winConfig"
+            msbuild $sln `
+              /p:Configuration=$winConfig `
+              /p:OutputPath=bin\Windows\ `
+              /v:minimal
+          }
+
+          # ---------- Android ----------
+          if ("${{ inputs.build_android }}" -eq "true") {
+            $androidConfig = Get-PreferredConfig "Android"
+
+            Write-Host "Building Android with Configuration=$androidConfig"
+            msbuild $sln `
+              /p:Configuration=$androidConfig `
+              /p:OutputPath=bin\Android\ `
+              /v:minimal
+          }
+
+      - name: Upload DLL artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mod-dlls
+          path: |
+            bin/Windows/**
+            bin/Android/**
+          if-no-files-found: error
+  build-addressables:
     name: Build (${{ matrix.target.name }})
+    if: ${{ inputs.assets_path != '' }}
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -110,7 +203,7 @@ jobs:
           mkdir -p "$PERSONAL_DIR"
           # Remove stale link from a previous cached run
           rm -rf "$PERSONAL_DIR/$MOD_NAME"
-          cmd //c mklink //D "$(cygpath -w "$PERSONAL_DIR/$MOD_NAME")" "..\..\..\mod\Assets"
+          cmd //c mklink //D "$(cygpath -w "$PERSONAL_DIR/$MOD_NAME")" "..\..\..\mod\${{ inputs.assets_path }}"
           echo "Linked mod assets -> $PERSONAL_DIR/$MOD_NAME"
 
           mkdir -p "$EDITOR_DIR"
@@ -126,7 +219,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.BASSDK_PATH }}/Library
-          key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/Assets/**') }}
+          key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/**') }}
           restore-keys: |
             Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
             Library-${{ matrix.target.name }}-
