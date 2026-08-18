@@ -37,15 +37,10 @@ public static class CIBuildAddressables
             return;
         }
 
-        Debug.Log($"[CI] Listing all asset groups");
-        foreach (var assetGroup in AddressableAssetSettingsDefaultObject.Settings.groups)
-        {
-            Debug.Log($"[CI] All Asset group: {assetGroup.name}");
-        }
-        Debug.Log($"[CI] Listing mod asset groups");
         foreach (var assetGroup in assetBundleGroup.addressableAssetGroups)
         {
-            Debug.Log($"[CI] Mod Asset group: {assetGroup.name}");
+            Debug.Log($"[CI] Adding addressable asset group: {assetGroup.name}");
+            AddressableAssetSettingsDefaultObject.Settings.groups.Add(assetGroup);
         }
 
         Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
