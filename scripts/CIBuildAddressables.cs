@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using ThunderRoad;
 using ThunderRoad.AssetSorcery;
-using UnityEditor;
 using UnityEngine;
 using QualityLevel = ThunderRoad.QualityLevel;
 
@@ -32,25 +28,17 @@ public static class CIBuildAddressables
 
     private static void RunBuild()
     {
-        Debug.Log("[CI] Loading build settings from EditorPrefs...");
-
-        AssetBundleBuilderGUI.gameExePath = EditorPrefs.GetString("TRAB.GameExePath");
-        AssetBundleBuilderGUI.clearCache = EditorPrefs.GetBool("TRAB.ClearCache");
-        AssetBundleBuilderGUI.runGameAfterBuild = EditorPrefs.GetBool("TRAB.RunGameAfterBuild");
-        AssetBundleBuilderGUI.cleanDestination = EditorPrefs.GetBool("TRAB.CleanDestination");
-        AssetBundleBuilderGUI.runGameArguments = EditorPrefs.GetString("TRAB.RunGameArguments");
-
-        AssetBundleBuilderGUI.assetBundleGroups = new List<AssetBundleGroup>();
+        Debug.Log("[CI] Running build...");
         foreach (AssetBundleGroup assetBundleGroup in EditorCommon.GetAllProjectAssets<AssetBundleGroup>())
         {
-            Debug.Log($"[CI] Adding asset bundle group: {assetBundleGroup.name}");
-            assetBundleGroup.selected = assetBundleGroup.isMod && assetBundleGroup.folderName != "Proto";
-            assetBundleGroup.exportAfterBuild = false;
-            AssetBundleBuilderGUI.assetBundleGroups.Add(assetBundleGroup);
-        }
+            Debug.Log($"[CI] Checking asset bundle group: {assetBundleGroup.name}");
 
-        //AssetBundleBuilderGUI.BuildSelected();
-        BuildSelected();
+            if (!assetBundleGroup.isMod || assetBundleGroup.folderName == "Proto")
+                continue;
+
+            Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");    
+            AssetBundleBuilder.Build(assetBundleGroup, false);
+        }
     }
 
     public static void SetAndroidQualityAndPlatform()
@@ -96,48 +84,5 @@ public static class CIBuildAddressables
         }
         Debug.Log("[CI] Set quality to Standalone and switched platform to Standalone.");
 
-    }
-
-    public static void BuildSelected()
-    {
-        try
-        {
-            // Open a new scene
-            UnityEditor.SceneManagement.EditorSceneManager.NewScene(UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Single);
-
-            EditorUtility.UnloadUnusedAssetsImmediate(); // https://issuetracker.unity3d.com/issues/addressables-very-slow-build-when-editor-heap-memory-is-full
-            GC.Collect();
-
-            //AssetBundleBuilderGUI.CloseAddressablesGroupsWindow(); // https://forum.unity.com/threads/buildplayercontent-calculate-asset-dependency-data-takes-forever.1015951/
-            var window = EditorWindow.GetWindow(typeof(EditorWindow), false, "Addressables Groups");
-            if (window.titleContent.text == "Addressables Groups") window.Close();
-
-            foreach (AssetBundleGroup assetBundleGroup in AssetBundleBuilderGUI.assetBundleGroups)
-            {
-                Debug.Log($"[CI] Checking asset bundle group: {assetBundleGroup.name} (selected: {assetBundleGroup.selected})");
-                if (assetBundleGroup.selected)
-                {
-                    assetBundleGroup.OnValidate();
-
-                    Debug.Log($"[CI] Building asset bundle group: {assetBundleGroup.name}");
-                    AssetBundleBuilder.Build(assetBundleGroup, AssetBundleBuilderGUI.clearCache);
-
-                    if (assetBundleGroup.exportAfterBuild)
-                    {
-                        Debug.Log($"[CI] Exporting asset bundle group: {assetBundleGroup.name}");
-                        AssetBundleBuilderGUI.Export(assetBundleGroup);
-                    }
-                }
-            }
-
-            // The end
-            Debug.Log("[CI] Build completed successfully.");
-            EditorApplication.Exit(0);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[CI] Build failed: {ex}");
-            EditorApplication.Exit(1);
-        }
     }
 }

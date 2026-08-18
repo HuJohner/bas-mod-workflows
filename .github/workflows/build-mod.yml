@@ -26,10 +26,10 @@ jobs:
             method: CIBuildAddressables.BuildWindows
             build_target: StandaloneWindows64
             artifact: mod-windows
-          #- name: Android
-          #  method: CIBuildAddressables.BuildAndroid
-          #  build_target: Android
-          #  artifact: mod-android
+          - name: Android
+            method: CIBuildAddressables.BuildAndroid
+            build_target: Android
+            artifact: mod-android
 
     steps:
       # -----------------------------------------------------------------------
@@ -130,17 +130,6 @@ jobs:
           buildMethod: ${{ matrix.target.method }}
           allowDirtyBuild: true
           customParameters: -desiredWorkerCount 1 -standbyWorkerCount 1
-
-      - name: List addressables output
-        shell: bash
-        run: |
-          OUTPUT_DIR="${{ env.BASSDK_PATH }}/BuildStaging/AddressableAssets/${{ matrix.target.name == 'Android' && 'Android' || 'Windows' }}"
-          echo "Listing: $OUTPUT_DIR"
-          if [ -d "$OUTPUT_DIR" ]; then
-            find "$OUTPUT_DIR" -type f -exec ls -lh {} \;
-          else
-            echo "::warning::Output directory does not exist: $OUTPUT_DIR"
-          fi
 
       # -----------------------------------------------------------------------
       # 8. Upload build output as artifacts
