@@ -123,7 +123,7 @@ jobs:
           targetPlatform: ${{ matrix.target.build_target }}
           buildMethod: ${{ matrix.target.method }}
           allowDirtyBuild: true
-          containerMemory: 12g
+          customParameters: -desiredWorkerCount 1 -standbyWorkerCount 1
 
       - name: Log build exit code
         shell: bash
