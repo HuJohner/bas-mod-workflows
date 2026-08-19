@@ -81,21 +81,9 @@ jobs:
           path: mod
 
       # -----------------------------------------------------------------------
-      # 3. Restore cached BasSDK clone (avoids ~2 min clone + full reimport)
-      # -----------------------------------------------------------------------
-      # - name: Cache BasSDK
-      #   id: cache-bassdk
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ${{ env.BASSDK_PATH }}
-      #     key: BasSDK-${{ env.UNITY_VERSION }}-${{ matrix.target.name }}
-      #     # No restore-keys — BasSDK cache must be exact version match
-
-      # -----------------------------------------------------------------------
-      # 4. Clone BasSDK if cache miss (avoids ~2 min clone + full reimport)
+      # 3. Clone BasSDK if cache miss (avoids ~2 min clone + full reimport)
       # -----------------------------------------------------------------------
       - name: Clone BasSDK
-        #if: steps.cache-bassdk.outputs.cache-hit != 'true'
         shell: bash
         run: |
           git clone --depth 1 \
@@ -103,7 +91,7 @@ jobs:
             ${{ env.BASSDK_PATH }}
 
       # -----------------------------------------------------------------------
-      # 5. Link mod assets + inject CI script into BasSDK
+      # 4. Link mod assets + inject CI script into BasSDK
       #    Uses a *relative* symlink (not junction, not absolute symlink):
       #    junctions and absolute symlinks bake in a host path that becomes
       #    invalid once unity-builder's Docker container remaps this
@@ -116,13 +104,11 @@ jobs:
         with:
           path: ${{ env.BASSDK_PATH }}/Assets/Personal/${{ github.event.repository.name }}
           target: ../../../mod/${{ inputs.assets_path }}
-
       - name: Inject CI script
         shell: bash
         run: |
           mkdir -p "${{ env.BASSDK_PATH }}/Assets/Editor"
           cp bas-mod-workflows/scripts/CIBuildAddressables.cs "${{ env.BASSDK_PATH }}/Assets/Editor/CIBuildAddressables.cs"
-
       - name: Link catalogs
         uses: HuJohner/bas-mod-workflows/.github/actions/relative-symlink@main
         with:
@@ -130,26 +116,25 @@ jobs:
           target: ../../../mod/${{ inputs.catalogs_path }}
 
       # -----------------------------------------------------------------------
-      # 6. Restore cached Unity Library (avoids full reimport on cache hit)
+      # 5. Restore cached Unity Library (avoids full reimport on cache hit)
       #    Must happen BEFORE Unity starts, so it doesn't reimport everything
       # -----------------------------------------------------------------------
-      # - name: Cache Unity Library
-      #   id: cache-library
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ${{ env.BASSDK_PATH }}/Library
-      #     key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/**') }}
-      #     restore-keys: |
-      #       Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
-      #       Library-${{ matrix.target.name }}-
+      - name: Cache Unity Library
+        id: cache-library
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BASSDK_PATH }}/Library
+          key: Library-${{ matrix.target.name }}-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/**') }}
+          restore-keys: |
+            Library-${{ matrix.target.name }}-${{ runner.os }}-${{ env.UNITY_VERSION }}-
+            Library-${{ matrix.target.name }}-${{ runner.os }}-
 
+      # -----------------------------------------------------------------------
+      # 6. Build addressables
+      # -----------------------------------------------------------------------
       - name: Free disk space
         if: ${{ runner.os == 'Linux' }}
         uses: jlumbroso/free-disk-space@v1.3.1
-
-      # -----------------------------------------------------------------------
-      # 7. Build addressables
-      # -----------------------------------------------------------------------
       - name: Build addressables (${{ matrix.target.name }})
         id: build-addressables
         uses: game-ci/unity-builder@v4
@@ -166,7 +151,7 @@ jobs:
           customParameters: -desiredWorkerCount 1 -standbyWorkerCount 1
 
       # -----------------------------------------------------------------------
-      # 8. Upload build output as artifacts
+      # 7. Upload build output as artifacts
       # -----------------------------------------------------------------------
       - name: Upload artifacts (${{ matrix.target.name }})
         uses: actions/upload-artifact@v4
