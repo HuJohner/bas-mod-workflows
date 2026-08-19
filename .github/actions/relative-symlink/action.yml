@@ -1,24 +1,26 @@
 name: 'Relative Symlink'
 description: >
-  Creates (or replaces) a relative directory symlink. Ensures the parent
-  directory exists, removes any existing file/dir/symlink at `path`, then
-  links it to `target`. Uses `mklink /D` on Windows and `ln -s` elsewhere.
-  `target` must be expressed relative to the parent directory of `path`
-  (i.e. relative to where the link itself will live), so it survives
-  container/drive remapping (e.g. game-ci's unity-builder).
+  Links a directory into place. On Windows, uses `mklink /D` (a directory
+  symlink is fully transparent to the Windows Editor's asset import).
+  On Linux, uses a bind mount instead of `ln -s` — Unity's Asset Database V2
+  on the Linux Editor does not reliably track directory symlinks (it can
+  throw "does not exist in SourceAssetDB" errors and trigger an infinite
+  reimport loop); a bind mount presents as a real directory, avoiding this
+  entirely. Ensures the parent directory exists and removes/unmounts
+  anything already at `path` first.
 
 inputs:
   path:
-    description: 'Path where the symlink should be created'
+    description: 'Path where the linked directory should appear'
     required: true
   target:
-    description: 'Path the symlink should point to, relative to the parent directory of `path`'
+    description: 'Path to link/mount, relative to the parent directory of `path`'
     required: true
 
 runs:
   using: 'composite'
   steps:
-    - name: Create relative symlink
+    - name: Link directory
       shell: bash
       run: |
         set -e
@@ -32,14 +34,19 @@ runs:
         mkdir -p "$PARENT_DIR"
         cd "$PARENT_DIR"
 
-        # Remove whatever's already there (stale symlink from a cached run,
-        # a real directory, etc.)
-        rm -rf "$LINK_NAME"
-
         if [ "$RUNNER_OS" = "Windows" ]; then
+          rm -rf "$LINK_NAME"
           cmd //c mklink //D "$LINK_NAME" "$TARGET_PATH"
+          echo "Linked $PARENT_DIR/$LINK_NAME -> $TARGET_PATH (mklink)"
         else
-          ln -s "$TARGET_PATH" "$LINK_NAME"
-        fi
+          # If a previous run left a bind mount active, unmount it first.
+          if mountpoint -q "$LINK_NAME" 2>/dev/null; then
+            sudo umount "$LINK_NAME"
+          fi
+          rm -rf "$LINK_NAME"
 
-        echo "Linked $PARENT_DIR/$LINK_NAME -> $TARGET_PATH"
+          ABS_TARGET="$(realpath -m "$TARGET_PATH")"
+          mkdir -p "$LINK_NAME"
+          sudo mount --bind "$ABS_TARGET" "$LINK_NAME"
+          echo "Bind-mounted $PARENT_DIR/$LINK_NAME -> $ABS_TARGET"
+        fi

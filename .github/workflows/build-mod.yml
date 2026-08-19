@@ -146,14 +146,6 @@ jobs:
       - name: Free disk space
         if: ${{ runner.os == 'Linux' }}
         uses: jlumbroso/free-disk-space@v1.3.1
-        with:
-          tool-cache: false   # Keep tool cache — unity-setup uses it
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false # keep false — unity-builder needs to pull its own image
-          swap-storage: false  # Keep swap — helps with memory-starved imports
 
       # -----------------------------------------------------------------------
       # 7. Build addressables
