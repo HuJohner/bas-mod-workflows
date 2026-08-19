@@ -2,8 +2,24 @@ name: Build Mod
  
 on:
   workflow_dispatch:
+    inputs:
+      build_windows:
+        description: 'Build the Windows target'
+        type: boolean
+        default: true
+        required: false
+      build_android:
+        description: 'Build the Android target'
+        type: boolean
+        default: false
+        required: false
  
 jobs:
   build:
     uses: HuJohner/bas-mod-workflows/.github/workflows/build-mod.yml@main
+    with:
+      assets_path: 'Assets'
+      catalogs_path: 'Catalog'
+      build_windows: ${{ inputs.build_windows }}
+      build_android: ${{ inputs.build_android }}
     secrets: inherit

@@ -19,6 +19,7 @@ bas-mod-workflows/
 1. The reusable workflow checks out both the BasSDK and your mod repo
 2. Your mod's `Assets/` folder is symlinked into `BasSDK/Assets/Personal/<repo-name>`
 3. `CIBuildAddressables.cs` is injected into the BasSDK project at runtime — no file needed in your mod repo
+2. Your mod's `Catalogs/` folder is symlinked into `BasSDK/BuildStaging/Catalogs/CI`
 4. Windows and Android builds run in parallel via GameCI
 
 ## Setting up a new mod repo
@@ -30,13 +31,3 @@ bas-mod-workflows/
    - `UNITY_EMAIL` — Unity account email
    - `UNITY_PASSWORD` — Unity account password
 4. Trigger the workflow manually from the Actions tab
-
-## Unity version
-
-The `unity_version` input must match the version the BasSDK targets.  
-Check the BasSDK's `ProjectSettings/ProjectVersion.txt` for the exact string.
-
-## Updating the build logic
-
-All build logic lives here in `scripts/CIBuildAddressables.cs`.  
-Changes here automatically apply to all mod repos on their next run — no changes needed in individual repos.
