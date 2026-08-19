@@ -39,7 +39,7 @@ jobs:
   build-addressables:
     name: Build (${{ matrix.target.name }})
     if: ${{ inputs.assets_path != '' }}
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -122,7 +122,8 @@ jobs:
           mkdir -p "$PERSONAL_DIR"
           # Remove stale link from a previous cached run
           rm -rf "$PERSONAL_DIR/$MOD_NAME"
-          cmd //c mklink //D "$(cygpath -w "$PERSONAL_DIR/$MOD_NAME")" "..\..\..\mod\${{ inputs.assets_path }}"
+          # cmd //c mklink //D "$(cygpath -w "$PERSONAL_DIR/$MOD_NAME")" "..\..\..\mod\${{ inputs.assets_path }}"
+          ln -s "../../../mod/${{ inputs.assets_path }}" "$PERSONAL_DIR/$MOD_NAME"
           echo "Linked mod assets -> $PERSONAL_DIR/$MOD_NAME"
 
           mkdir -p "$EDITOR_DIR"
@@ -132,7 +133,8 @@ jobs:
           mkdir -p "$CATALOGS_DIR"
           # Remove stale link from a previous cached run
           rm -rf "$CATALOGS_DIR"
-          cmd //c mklink //D "$(cygpath -w "$CATALOGS_DIR")" "..\..\..\mod\${{ inputs.catalogs_path }}"
+          # cmd //c mklink //D "$(cygpath -w "$CATALOGS_DIR")" "..\..\..\mod\${{ inputs.catalogs_path }}"
+          ln -s "../../../mod/${{ inputs.catalogs_path }}" "$CATALOGS_DIR"
           echo "Linked mod assets -> $CATALOGS_DIR"
 
       # -----------------------------------------------------------------------
