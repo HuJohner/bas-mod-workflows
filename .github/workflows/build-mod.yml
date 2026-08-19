@@ -95,7 +95,7 @@ jobs:
       # 4. Clone BasSDK if cache miss (avoids ~2 min clone + full reimport)
       # -----------------------------------------------------------------------
       - name: Clone BasSDK
-        if: steps.cache-bassdk.outputs.cache-hit != 'true'
+        #if: steps.cache-bassdk.outputs.cache-hit != 'true'
         shell: bash
         run: |
           git clone --depth 1 \
