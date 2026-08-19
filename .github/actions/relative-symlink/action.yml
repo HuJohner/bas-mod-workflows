@@ -1,0 +1,45 @@
+name: 'Relative Symlink'
+description: >
+  Creates (or replaces) a relative directory symlink. Ensures the parent
+  directory exists, removes any existing file/dir/symlink at `path`, then
+  links it to `target`. Uses `mklink /D` on Windows and `ln -s` elsewhere.
+  `target` must be expressed relative to the parent directory of `path`
+  (i.e. relative to where the link itself will live), so it survives
+  container/drive remapping (e.g. game-ci's unity-builder).
+
+inputs:
+  path:
+    description: 'Path where the symlink should be created'
+    required: true
+  target:
+    description: 'Path the symlink should point to, relative to the parent directory of `path`'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create relative symlink
+      shell: bash
+      run: |
+        set -e
+
+        LINK_PATH="${{ inputs.path }}"
+        TARGET_PATH="${{ inputs.target }}"
+
+        PARENT_DIR="$(dirname "$LINK_PATH")"
+        LINK_NAME="$(basename "$LINK_PATH")"
+
+        mkdir -p "$PARENT_DIR"
+        cd "$PARENT_DIR"
+
+        # Remove whatever's already there (stale symlink from a cached run,
+        # a real directory, etc.)
+        rm -rf "$LINK_NAME"
+
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          cmd //c mklink //D "$LINK_NAME" "$TARGET_PATH"
+        else
+          ln -s "$TARGET_PATH" "$LINK_NAME"
+        fi
+
+        echo "Linked $PARENT_DIR/$LINK_NAME -> $TARGET_PATH"

@@ -111,31 +111,23 @@ jobs:
       #    relative to its own directory, so it survives the remap since
       #    BasSDK and mod are both under the same mounted root.
       # -----------------------------------------------------------------------
-      - name: Set up project structure
+      - name: Link mod assets
+        uses: HuJohner/bas-mod-workflows/.github/actions/relative-symlink@main
+        with:
+          path: ${{ env.BASSDK_PATH }}/Assets/Personal/${{ github.event.repository.name }}
+          target: ../../../mod/${{ inputs.assets_path }}
+
+      - name: Inject CI script
         shell: bash
         run: |
-          MOD_NAME="${{ github.event.repository.name }}"
-          PERSONAL_DIR="${{ env.BASSDK_PATH }}/Assets/Personal"
-          EDITOR_DIR="${{ env.BASSDK_PATH }}/Assets/Editor"
-          CATALOGS_DIR="${{ env.BASSDK_PATH }}/BuildStaging/Catalogs/CI"
+          mkdir -p "${{ env.BASSDK_PATH }}/Assets/Editor"
+          cp bas-mod-workflows/scripts/CIBuildAddressables.cs "${{ env.BASSDK_PATH }}/Assets/Editor/CIBuildAddressables.cs"
 
-          mkdir -p "$PERSONAL_DIR"
-          # Remove stale link from a previous cached run
-          rm -rf "$PERSONAL_DIR/$MOD_NAME"
-          # cmd //c mklink //D "$(cygpath -w "$PERSONAL_DIR/$MOD_NAME")" "..\..\..\mod\${{ inputs.assets_path }}"
-          ln -s "../../../mod/${{ inputs.assets_path }}" "$PERSONAL_DIR/$MOD_NAME"
-          echo "Linked mod assets -> $PERSONAL_DIR/$MOD_NAME"
-
-          mkdir -p "$EDITOR_DIR"
-          cp bas-mod-workflows/scripts/CIBuildAddressables.cs "$EDITOR_DIR/CIBuildAddressables.cs"
-          echo "Injected CIBuildAddressables.cs into $EDITOR_DIR"
-
-          mkdir -p "$CATALOGS_DIR"
-          # Remove stale link from a previous cached run
-          rm -rf "$CATALOGS_DIR"
-          # cmd //c mklink //D "$(cygpath -w "$CATALOGS_DIR")" "..\..\..\mod\${{ inputs.catalogs_path }}"
-          ln -s "../../../mod/${{ inputs.catalogs_path }}" "$CATALOGS_DIR"
-          echo "Linked mod assets -> $CATALOGS_DIR"
+      - name: Link catalogs
+        uses: HuJohner/bas-mod-workflows/.github/actions/relative-symlink@main
+        with:
+          path: ${{ env.BASSDK_PATH }}/BuildStaging/Catalogs/CI
+          target: ../../../mod/${{ inputs.catalogs_path }}
 
       # -----------------------------------------------------------------------
       # 6. Restore cached Unity Library (avoids full reimport on cache hit)
@@ -150,6 +142,18 @@ jobs:
           restore-keys: |
             Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
             Library-${{ matrix.target.name }}-
+
+      - name: Free disk space
+        if: ${{ runner.os == 'Linux' }}
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false   # Keep tool cache — unity-setup uses it
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false # keep false — unity-builder needs to pull its own image
+          swap-storage: false  # Keep swap — helps with memory-starved imports
 
       # -----------------------------------------------------------------------
       # 7. Build addressables
