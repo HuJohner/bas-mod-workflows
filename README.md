@@ -6,12 +6,15 @@ Shared GitHub Actions workflows for Blade & Sorcery mod CI/CD.
 
 ```
 bas-mod-workflows/
-├── .github/workflows/
-│   └── build-mod.yml          # Reusable workflow (called by mod repos)
+├── .github/
+│   ├── actions/relative-symlink/
+│   │   └── action.yml             # Reusable action to link asset and catalog folders into the SDK
+│   └── workflows/
+│       └── build-mod.yml          # Reusable workflow (called by mod repos)
 ├── scripts/
-│   └── CIBuildAddressables.cs # Injected into BasSDK at build time
+│   └── CIBuildAddressables.cs     # Injected into BasSDK at build time
 └── mod-repo-template/
-    └── build.yml              # Copy this into your mod repo
+    └── build.yml                  # Copy this into your mod repo
 ```
 
 ## How it works
