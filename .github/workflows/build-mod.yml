@@ -83,13 +83,13 @@ jobs:
       # -----------------------------------------------------------------------
       # 3. Restore cached BasSDK clone (avoids ~2 min clone + full reimport)
       # -----------------------------------------------------------------------
-      - name: Cache BasSDK
-        id: cache-bassdk
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.BASSDK_PATH }}
-          key: BasSDK-${{ env.UNITY_VERSION }}-${{ matrix.target.name }}
-          # No restore-keys — BasSDK cache must be exact version match
+      # - name: Cache BasSDK
+      #   id: cache-bassdk
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ${{ env.BASSDK_PATH }}
+      #     key: BasSDK-${{ env.UNITY_VERSION }}-${{ matrix.target.name }}
+      #     # No restore-keys — BasSDK cache must be exact version match
 
       # -----------------------------------------------------------------------
       # 4. Clone BasSDK if cache miss (avoids ~2 min clone + full reimport)
@@ -133,15 +133,15 @@ jobs:
       # 6. Restore cached Unity Library (avoids full reimport on cache hit)
       #    Must happen BEFORE Unity starts, so it doesn't reimport everything
       # -----------------------------------------------------------------------
-      - name: Cache Unity Library
-        id: cache-library
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.BASSDK_PATH }}/Library
-          key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/**') }}
-          restore-keys: |
-            Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
-            Library-${{ matrix.target.name }}-
+      # - name: Cache Unity Library
+      #   id: cache-library
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ${{ env.BASSDK_PATH }}/Library
+      #     key: Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-${{ hashFiles('mod/**') }}
+      #     restore-keys: |
+      #       Library-${{ matrix.target.name }}-${{ env.UNITY_VERSION }}-
+      #       Library-${{ matrix.target.name }}-
 
       - name: Free disk space
         if: ${{ runner.os == 'Linux' }}
