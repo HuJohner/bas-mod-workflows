@@ -28,9 +28,8 @@ bas-mod-workflows/
 ## Setting up a new mod repo
 
 1. Copy `mod-repo-template/build.yml` into your mod repo at `.github/workflows/build.yml`
-2. Replace `YOUR_ORG` with your GitHub organisation or username
-3. Add these secrets to your mod repo (or organisation-wide):
+2. Add these secrets to your mod repo (or organisation-wide):
    - `UNITY_LICENSE` — contents of your `.ulf` license file
    - `UNITY_EMAIL` — Unity account email
    - `UNITY_PASSWORD` — Unity account password
-4. Trigger the workflow manually from the Actions tab
+3. Trigger the workflow manually from the Actions tab
